@@ -16,7 +16,7 @@
     let current;
     try{
       const response=await fetch('/?action=workout_public_link',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({workout_id:copy.dataset.copyId,nonce:copy.dataset.copyNonce,revision:copy.dataset.copyRevision})});
-      current=await response.json();
+      try{current=await response.json();}catch(_){throw new Error('Sharing could not be verified. Reload the workout and sign in again if needed.');}
       if(!response.ok||typeof current.url!=='string')throw new Error(current.error||'Reload the workout before copying.');
       link.value=current.url;
     }catch(error){copy.disabled=true;link.value='';link.disabled=true;status.textContent=error.message;return;}

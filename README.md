@@ -470,7 +470,8 @@ conflicts; no newer revision is silently substituted on retry.
 Public URL: https://<configured-app-host>/?public_workout=<workout-id>.
 This GET/HEAD-only route runs before protected dispatch and renders exclusively
 Workout_Visibility::get_public. Owner/admin cookies do not bypass public policy.
-Mixed public/management selectors never dispatch mutations. The public template is
+Common social tracking parameters are ignored without rendering their values;
+mixed public/management selectors never dispatch mutations. The public template is
 separate from all owner templates and emits no management forms/nonces, notes,
 photos, location labels, imports/paths, device/raw metadata, HR/cadence or health data.
 Swimming, running and walking are labelled separately; this view shows one activity,

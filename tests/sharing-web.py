@@ -28,6 +28,8 @@ for who in (None,f['cookie'],f['manager']):
     check(req('/?public_workout='+str(f['ids']['private']),cookie=who)[0]==404)
 check(req('/?public_workout=999999999')[2]==req('/?public_workout='+str(f['ids']['private']))[2])
 check(req('/?public_workout='+str(f['ids']['cycling']))[0]==404)
+check(req(url+'&fbclid=PRIVATE_TRACKING_CANARY')[0]==200 and 'PRIVATE_TRACKING_CANARY' not in req(url+'&fbclid=PRIVATE_TRACKING_CANARY')[2])
+check(req(url+'&utm_source=synthetic')[0]==200)
 check(req(url,{},method='POST')[0]==405)
 check(req(url+'&action=workout_write',{},cookie=f['cookie'])[0]==405)
 check(req(url+'&edit_workout='+str(id),cookie=f['cookie'])[0]==404)

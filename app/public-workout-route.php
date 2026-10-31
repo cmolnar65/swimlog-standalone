@@ -5,7 +5,11 @@ require_once __DIR__.'/PublicWorkout.php';
 // This route has no identity-derived owner model, management dispatch or public cache.
 header('Cache-Control: private, no-store');header('X-Robots-Tag: noindex, noarchive');
 if(!in_array($method,array('GET','HEAD'),true)){http_response_code(405);header('Allow: GET, HEAD');exit('Read-only page.');}
-if(count($_GET)!==1){http_response_code(404);exit('Workout not found.');}
+foreach($_GET as$key=>$value){
+    if($key==='public_workout')continue;
+    // Social platforms append tracking parameters. They are ignored, never rendered.
+    if(!preg_match('/^(fbclid|gclid|dclid|msclkid|igsh|igshid|mibextid|utm_[a-z_]+)$/D',$key)||!is_string($value)||strlen($value)>2048){http_response_code(404);exit('Workout not found.');}
+}
 $public=Sharing::publicWorkout($_GET['public_workout']);
 if(is_wp_error($public)){http_response_code(404);exit('Workout not found.');}
 header('Content-Type: text/html; charset=UTF-8');
