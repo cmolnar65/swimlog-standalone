@@ -24,7 +24,7 @@ Missing capabilities fail closed. Later features need explicit plugin/schema che
 
 1. Public welcome page posts a same-origin login request; a Secure, HttpOnly,
    SameSite=Lax, host-only browser verifier cookie is created.
-2. The browser visits the companion on cmolnar.com. Existing WordPress login handles
+2. The browser visits a narrowly scoped companion route on cmolnar.com. Existing WordPress login handles
    passwords, password reset, login security plugins and authentication.
 3. The signed-in user confirms with a session/action-bound WordPress nonce.
 4. An encrypted, 120-second grant is stored in non-autoloaded WordPress options.
@@ -52,7 +52,9 @@ reviewed. Existing host-only cookies must be confirmed before enabling the compa
 Full `wp-load.php` still runs active plugins and theme PHP; it bypasses theme template
 rendering, not all theme initialization. Configuration, unexpected output, cache,
 canonical/security plugin redirects and PHP-FPM handling need live acceptance.
-No global URL, cookie, theme, REST or CORS filters are installed.
+The handoff route runs during `init`, before template rendering, without invoking
+`wp-admin` or `admin_init` maintenance/migration hooks. No global URL, cookie,
+theme, REST or CORS filters are installed.
 
 ## Server setup and deployment
 

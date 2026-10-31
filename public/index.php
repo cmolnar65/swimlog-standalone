@@ -26,7 +26,7 @@ try {
         if (($_SERVER['HTTP_ORIGIN'] ?? '') !== $config['app_origin']) { http_response_code(403); exit('Invalid origin.'); }
         $verifier = Auth::random();
         Auth::cookie(Auth::STATE_COOKIE, $verifier, time() + 600);
-        $url = $config['wordpress_origin'] . '/wp-admin/admin-post.php?action=swimlog_standalone_auth&challenge=' . hash('sha256', $verifier);
+        $url = $config['wordpress_origin'] . '/?swimlog_standalone_auth=1&challenge=' . hash('sha256', $verifier);
         header('Location: ' . $url, true, 303); exit;
     }
     $owner = Auth::cookieUser();

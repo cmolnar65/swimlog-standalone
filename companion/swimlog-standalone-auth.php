@@ -7,8 +7,9 @@
 if (!defined('ABSPATH')) exit;
 require_once dirname(__DIR__) . '/app/Auth.php';
 add_action('swimlog_sso_cleanup', array('SwimlogStandalone\\Auth', 'cleanup'));
-add_action('admin_post_swimlog_standalone_auth', 'swimlog_standalone_auth_handoff');
-add_action('admin_post_nopriv_swimlog_standalone_auth', 'swimlog_standalone_auth_handoff');
+add_action('init', function () {
+    if (isset($_GET['swimlog_standalone_auth']) && $_GET['swimlog_standalone_auth'] === '1') swimlog_standalone_auth_handoff();
+}, 20);
 function swimlog_standalone_auth_handoff() {
     try {
         $file = getenv('SWIMLOG_CONFIG') ?: '/var/www/swimlog.cmolnar.com/shared/config/app.php';
@@ -25,7 +26,7 @@ function swimlog_standalone_auth_handoff() {
         if (!\SwimlogStandalone\Auth::valid($challenge)) throw new RuntimeException('Invalid challenge.');
         $owner = \SwimlogStandalone\Auth::cookieUser();
         wp_set_current_user($owner);
-        $endpoint = $main . '/wp-admin/admin-post.php?action=swimlog_standalone_auth&challenge=' . $challenge;
+        $endpoint = $main . '/?swimlog_standalone_auth=1&challenge=' . $challenge;
         if (!$owner) { wp_safe_redirect(wp_login_url($endpoint)); exit; }
         if (!\SwimlogStandalone\Auth::requireCapability($owner)) { status_header(403); exit('Your account does not have Swim Log access.'); }
         header('Content-Type: text/html; charset=UTF-8');

@@ -45,7 +45,7 @@ state.load(headers['Set-Cookie'])
 verifier = state['__Host-swimlog-state'].value
 check(state['__Host-swimlog-state']['secure'] and state['__Host-swimlog-state']['httponly'] and not state['__Host-swimlog-state']['domain'])
 endpoint = headers['Location'].removeprefix(main_origin)
-check(endpoint.startswith('/wp-admin/admin-post.php?action=swimlog_standalone_auth&challenge='))
+check(endpoint.startswith('/?swimlog_standalone_auth=1&challenge='))
 status, headers, body = request(main, endpoint)
 check(status == 302 and '/wp-login.php' in headers['Location'])
 status, headers, body = request(main, endpoint, cookie=main_cookie)

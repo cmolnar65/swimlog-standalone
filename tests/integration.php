@@ -30,7 +30,7 @@ rejects(function() use ($code, $verifier) { Auth::redeem($code, $verifier); });
 wp_cache_set('swimlog_sso_' . hash('sha256', $code), $stored, 'options');
 rejects(function() use ($code, $verifier) { Auth::redeem($code, $verifier); });
 wp_cache_delete('swimlog_sso_' . hash('sha256', $code), 'options');
-$seal = new ReflectionMethod(Auth::class, 'seal'); $seal->setAccessible(true);
+$seal = new ReflectionMethod(Auth::class, 'seal'); if (PHP_VERSION_ID < 80100) $seal->setAccessible(true);
 $expiredCode = Auth::random(); $expiredKey = 'swimlog_sso_' . hash('sha256', $expiredCode);
 add_option($expiredKey, $seal->invoke(null, array('challenge' => $challenge, 'cookie' => $cookie, 'owner' => $owner, 'expires' => time()-1)), '', false);
 rejects(function() use ($expiredCode, $verifier) { Auth::redeem($expiredCode, $verifier); });
