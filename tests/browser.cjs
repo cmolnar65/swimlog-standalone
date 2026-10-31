@@ -442,6 +442,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.getByRole('button',{name:'Close event details',exact:true}).click();
       await page.getByRole('link',{name:'Calendar',exact:true}).click();
       await page.locator('#calendar-title').waitFor();
+      await page.locator('[data-day-open]:visible').first().waitFor();
       assert(await page.locator('[data-day-open]:visible').count()>0);
       await page.locator('[data-day-open]:visible').first().click();
       assert(await page.locator('#calendar-day-dialog [data-day-items] .calendar-entry').count()>1);
