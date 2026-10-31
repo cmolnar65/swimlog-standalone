@@ -58,6 +58,7 @@ const { chromium, firefox, webkit } = require('playwright');
       assert(!(await page.locator('body').innerText()).includes('PRIVATE_NOTES_CANARY'));
       for (const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         const overflow=await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(el=>el.getBoundingClientRect().right>innerWidth+1).map(el=>({tag:el.tagName,class:el.className,right:Math.round(el.getBoundingClientRect().right)})).slice(0,8));
         assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1), `${name}: horizontal overflow at ${width}: ${JSON.stringify(overflow)}`);
         const display=await page.locator('.calendar-grid').first().evaluate(el=>getComputedStyle(el).display);
@@ -93,6 +94,7 @@ const { chromium, firefox, webkit } = require('playwright');
       // Planned swims share the desktop dialog and touch dismissal behavior.
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         const entry=page.locator('a[data-plan-id="'+fixture.plans.plan+'"]').first();
         await reveal(entry);await entry.scrollIntoViewIfNeeded();
         const before=await page.evaluate(()=>scrollY);
@@ -153,7 +155,8 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.getByLabel('Planned duration (optional)',{exact:true}).fill('10:99');
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
-        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: plan form overflow at ${width}`);
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: plan form overflow at ${width}: ${await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(el=>({tag:el.tagName,cls:el.className,right:el.getBoundingClientRect().right})))}`);
       }
       await page.getByRole('button',{name:'Save planned workout',exact:true}).tap();
       await page.getByRole('alert').filter({hasText:'Seconds must be 00'}).waitFor();
@@ -192,6 +195,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.locator('#plan-action-title').waitFor();
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: move form overflow at ${width}`);
       }
       await page.getByLabel('Target date',{exact:true}).fill(target);
@@ -324,6 +328,7 @@ const { chromium, firefox, webkit } = require('playwright');
       assert(totals.includes('10,841.44 m') && totals.includes('Distance unavailable'));
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: workout log overflow at ${width}`);
         const entry=page.locator('a[data-workout-id="'+fixture.workouts.pool+'"]').first();
         await reveal(entry);await entry.scrollIntoViewIfNeeded();
@@ -377,6 +382,7 @@ const { chromium, firefox, webkit } = require('playwright');
       assert.equal(await page.locator('input[name=recorded_choice]:checked').count(),0);
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: match form overflow at ${width}`);
       }
       await page.getByLabel('Recorded date',{exact:true}).fill('1900-01-01');
@@ -407,6 +413,7 @@ const { chromium, firefox, webkit } = require('playwright');
       // Events share the same desktop pop-up and mobile tap-off behavior.
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         const entry=page.locator('a[data-event-id="'+fixture.events.own+'"]').first();
         await reveal(entry);await entry.scrollIntoViewIfNeeded();const before=await page.evaluate(()=>scrollY);
         if(width<=390)await entry.tap();else await entry.click();
@@ -449,6 +456,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.getByLabel('Event notes (optional)',{exact:true}).fill('Synthetic event notes with a quote " and backslash \\');
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: event editor overflow at ${width}`);
       }
       await page.getByRole('button',{name:'Save event',exact:true}).tap();
