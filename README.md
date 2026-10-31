@@ -402,3 +402,10 @@ Synthetic integration, HTTP and Chromium/Firefox/WebKit tests cover these screen
 Garmin network calls are intercepted only in the disposable test installation;
 test helpers are excluded from deployment archives. Live Garmin provider behavior
 and physical-device acceptance still require user testing.
+
+Installed plugin builds without Garmin's newer connection_ready helper are
+supported. The standalone adapter records only an owner/key-bound HMAC after a
+successful existing plugin connection test; it does not store credentials again.
+Replacing/removing the key or a failed test invalidates verification. The native
+plugin verifier remains authoritative whenever available. Legacy installations
+must verify once in Settings → Garmin Setup before standalone Garmin operations.

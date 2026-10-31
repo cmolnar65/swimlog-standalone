@@ -6,16 +6,34 @@ use SwimLogEvaluation\Garmin_Measurement_Sync as Sync;
 use SwimLogEvaluation\Plugin;
 use SwimLogEvaluation\Importer;
 final class Settings {
+    const VERIFIED_KEY='standalone_garmin_verified_credential';
     const PREFS=array('birthdate','calendar_first_day','training_volume_months','public_results','public_ows_routes','rest_api_access');
     const LOCATION=array('name','pool_length','pool_unit','latitude','longitude','notes');
     public static function error($text,$status=422){return new \WP_Error('standalone_settings',$text,array('status'=>$status));}
     public static function ready($owner){
         if(!Auth::requireCapability($owner)||Auth::cookieUser()!==$owner)return self::error('Settings access denied.',403);
         if(!defined('SWIMLOG_EVALUATION_DIR')||!defined('SWIMLOG_EVALUATION_DB_VERSION')||version_compare((string)get_option('swimlog_db_version','0'),SWIMLOG_EVALUATION_DB_VERSION,'<'))return self::error('The Swim Log installation must be ready before opening settings.',503);
-        foreach(array('location','workout','land-activity','garmin-personal-api','garmin-measurement-sync','importer','plugin')as$file)require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
+        foreach(array('location','workout','land-activity','garmin-personal-api','garmin-measurement-sync','importer','plugin')as$file){$path=SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';if(!is_readable($path))return self::error('An installed Swim Log service needed by Settings is unavailable.',503);require_once $path;}
         return true;
     }
-    public static function verified($owner){return !is_wp_error(self::ready($owner))&&API::connection_ready($owner);}
+    private static function credentialMarker($owner,$stored){return hash_hmac('sha256','standalone-garmin-v1:'.$owner.':'.$stored,wp_salt('auth'));}
+    public static function verified($owner){
+        if(is_wp_error(self::ready($owner)))return false;
+        // Prefer the plugin's verifier whenever present; never bypass a failed native check.
+        if(is_callable(array(API::class,'connection_ready')))return API::connection_ready($owner);
+        $stored=(string)get_user_meta($owner,API::META_KEY,true);
+        $verified=(string)get_user_meta($owner,self::VERIFIED_KEY,true);
+        return $stored!==''&&$verified!==''&&hash_equals(self::credentialMarker($owner,$stored),$verified);
+    }
+    private static function testConnection($owner){
+        delete_user_meta($owner,self::VERIFIED_KEY);
+        $stored=(string)get_user_meta($owner,API::META_KEY,true);
+        $result=API::test_connection($owner);
+        if(is_wp_error($result)||$result!==true)return $result;
+        if($stored===''||!hash_equals($stored,(string)get_user_meta($owner,API::META_KEY,true)))return self::error('The saved key changed during verification. Verify the current key again.',409);
+        if(!is_callable(array(API::class,'connection_ready')))update_user_meta($owner,self::VERIFIED_KEY,self::credentialMarker($owner,$stored));
+        return self::verified($owner)?true:self::error('Verification could not be confirmed. Test the connection again.',503);
+    }
     public static function preferences($owner){$v=array();foreach(self::PREFS as$key)$v[$key]=(string)get_user_meta($owner,'swimlog_'.$key,true);if($v['public_results']==='')$v['public_results']=(string)get_option('swimlog_public_results_default','0');if(!in_array($v['calendar_first_day'],array('saturday','sunday','monday'),true))$v['calendar_first_day']='sunday';if((int)$v['training_volume_months']<1||(int)$v['training_volume_months']>24)$v['training_volume_months']='3';return $v;}
     public static function activities($owner){$choices=array('lap_swimming'=>'Pool swims','open_water_swimming'=>'Open-water swims');if(\SwimLogEvaluation\Land_Activity::authorized($owner)&&\SwimLogEvaluation\Land_Activity::enabled())$choices+=array('running'=>'Running','walking'=>'Walking');return $choices;}
     public static function measurements(){return array('weight'=>'Weight','body_composition'=>'Body composition (BMI only)','spo2'=>'SpO2 provider summaries');}
@@ -23,7 +41,7 @@ final class Settings {
     public static function revision($owner,$screen,$id='new'){
         if($screen==='swimmer')$value=self::preferences($owner);
         elseif($screen==='locations'){$value=self::location($owner,(string)$id);if(is_wp_error($value))return $value;}
-        else $value=array(get_user_meta($owner,API::META_KEY,true),get_user_meta($owner,API::TESTED_KEY,true),get_user_meta($owner,'swimlog_garmin_sync_enabled',true),API::scheduled_types($owner),Sync::categories($owner));
+        else $value=array(get_user_meta($owner,API::META_KEY,true),get_user_meta($owner,'swimlog_garmin_tested_credential',true),get_user_meta($owner,self::VERIFIED_KEY,true),get_user_meta($owner,'swimlog_garmin_sync_enabled',true),API::scheduled_types($owner),Sync::categories($owner));
         return hash_hmac('sha256',serialize(array($screen,$id,$value)),wp_salt('nonce'));
     }
     public static function submit($owner,$input,$origin,$appOrigin){
@@ -59,9 +77,9 @@ final class Settings {
                 foreach(array('pool_length','latitude','longitude')as$key)if($input[$key]!==''&&(!is_numeric($input[$key])||!is_finite((float)$input[$key])))return self::error('Enter valid numeric location measurements.');
                 $result=Location::save($owner,array_intersect_key($input,array_flip(self::LOCATION)),$id==='new'?0:(int)$id);if(!is_wp_error($result))return array('url'=>'/?screen=locations&edit_location='.(int)$result.'&settings_saved=1');
             } elseif($op==='location_delete') {if($id==='new'||($input['confirm_delete']??'')!=='1')return self::error('Confirm deletion of this location.');$result=Location::delete((int)$id,$owner);}
-            elseif($op==='key_save'){$key=trim($input['api_key']??'');if($key==='')return self::error('Enter a Garmin Personal API key.');$result=API::save_key($owner,$key);}
-            elseif($op==='key_test')$result=API::test_connection($owner);
-            elseif($op==='key_remove'){if(($input['confirm_remove']??'')!=='1')return self::error('Confirm removing the saved API key.');API::remove_key($owner);}
+            elseif($op==='key_save'){$key=trim($input['api_key']??'');if($key==='')return self::error('Enter a Garmin Personal API key.');delete_user_meta($owner,self::VERIFIED_KEY);$result=API::save_key($owner,$key);}
+            elseif($op==='key_test')$result=self::testConnection($owner);
+            elseif($op==='key_remove'){if(($input['confirm_remove']??'')!=='1')return self::error('Confirm removing the saved API key.');API::remove_key($owner);delete_user_meta($owner,self::VERIFIED_KEY);}
             elseif($op==='activity_sync') {
                 $types=array_values(array_unique($input['types']??array()));$choices=self::activities($owner);if(array_diff($types,array_keys($choices)))return self::error('Choose authorized activity types.');
                 $enabled=($input['enabled']??'')==='1';if(isset($input['enabled'])&&$input['enabled']!=='1')return self::error('Invalid sync setting.');if($enabled&&!$types)return self::error('Select at least one activity to synchronize.');

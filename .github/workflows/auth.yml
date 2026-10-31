@@ -142,3 +142,11 @@ jobs:
             SWIMLOG_BROWSER=chromium node tests/settings-browser.cjs
             SWIMLOG_BROWSER=chromium node tests/entry-browser.cjs
           fi
+          # Simulate an installed Garmin API without the newer verification helper/constant.
+          python3 -c 'import pathlib; p=pathlib.Path("/tmp/swimlog-wp/wp-content/plugins/swimlog-core/includes/class-garmin-personal-api.php"); p.write_text(p.read_text().replace("connection_ready", "legacy_connection_ready").replace("TESTED_KEY", "LEGACY_TESTED_KEY"))'
+          wp eval-file "$GITHUB_WORKSPACE/tests/settings-legacy.php" --path=/tmp/swimlog-wp
+          python3 tests/settings-web.py
+          if [ '${{ matrix.php }}' = '8.3' ]; then
+            wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+            SWIMLOG_BROWSER=chromium node tests/settings-browser.cjs
+          fi
