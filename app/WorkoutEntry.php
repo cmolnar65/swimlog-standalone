@@ -20,7 +20,17 @@ final class WorkoutEntry {
     public static function blankSet(){return array('type'=>'active','repetitions'=>'','distance'=>'','stroke'=>'UNKNOWN','timing'=>'unknown','rep_times'=>'','set_time'=>'','interval'=>'','rest'=>'','notes'=>'');}
     private static function key($owner,$token){return 'standalone_entry_'.hash('sha256',$owner.'|'.wp_get_session_token().'|'.$token);}
     public static function token($owner,$mode){$token=bin2hex(random_bytes(24));set_transient(self::key($owner,$token),array('mode'=>$mode,'done'=>false),7200);return $token;}
-    public static function receipt($owner,$token){if(!is_string($token)||!preg_match('/^[a-f0-9]{48}$/D',$token))return false;return get_transient(self::key($owner,$token));}
+    public static function receipt($owner,$token,$fresh=false){
+        if(!is_string($token)||!preg_match('/^[a-f0-9]{48}$/D',$token))return false;
+        $key=self::key($owner,$token);
+        if($fresh){
+            // External caches hold the authoritative transient, not just a cached DB copy.
+            if(wp_using_ext_object_cache())return wp_cache_get($key,'transient',true);
+            wp_cache_delete('_transient_'.$key,'options');
+            wp_cache_delete('_transient_timeout_'.$key,'options');
+        }
+        return get_transient($key);
+    }
     public static function form($owner){return array('token'=>self::token($owner,'manual'),'values'=>array('workout_date'=>wp_date('Y-m-d'),'workout_time'=>'','location_id'=>'0','pool_length'=>'25','course_unit'=>'m','total_distance'=>'','duration'=>'','notes'=>''),'sets'=>array(self::blankSet()),'error'=>null);}
     public static function locations($owner){$rows=array();foreach(Location::all_for_user($owner)as$row)$rows[]=array('id'=>(int)$row->id,'name'=>$row->name);return $rows;}
     public static function location($owner,$value){if(!is_string($value)||!preg_match('/^(0|[1-9][0-9]{0,17})$/D',$value)||(float)$value>PHP_INT_MAX||($value!=='0'&&!Location::get_for_user((int)$value,$owner)))return self::error('Select one of your own locations.');return (int)$value;}
@@ -57,11 +67,12 @@ final class WorkoutEntry {
     public static function submit($owner,$mode,$input,$files,$origin,$appOrigin) {
         $ready=self::ready($owner,$mode);if(is_wp_error($ready))return $ready;
         $token=$input['token']??null;$receipt=self::receipt($owner,$token);
-        if(!$receipt||$receipt['mode']!==$mode||$origin!==$appOrigin||!is_string($input['nonce']??null)||!wp_verify_nonce($input['nonce'],'standalone_entry_'.$mode.'_'.$token))return self::error('This form expired or is invalid. Reload it before trying again.',403);
+        if($origin!==$appOrigin)return self::error('The upload or workout request came from an unexpected origin. Open this application directly and reload the form.',403);
+        if(!is_string($input['nonce']??null)||!is_string($token)||!wp_verify_nonce($input['nonce'],'standalone_entry_'.$mode.'_'.$token))return self::error('Your sign-in verification for this form expired or is invalid. Reload the form before trying again.',403);
+        if(!is_array($receipt)||($receipt['mode']??null)!==$mode)return self::error('This form receipt expired or is unavailable in the WordPress cache. Reload the form before trying again.',403);
         $locked=Importer::owner_lock($owner);if(is_wp_error($locked))return self::error('Another workout change or import is running. Try again shortly.',409);
         try {
-            $key=self::key($owner,$token);wp_cache_delete($key,'transient');wp_cache_delete('_transient_'.$key,'options');
-            $receipt=self::receipt($owner,$token);if(!$receipt)return self::error('This form expired. Reload it.',403);
+            $receipt=self::receipt($owner,$token,true);if(!is_array($receipt)||($receipt['mode']??null)!==$mode)return self::error('This form receipt expired or is unavailable in the WordPress cache. Reload the form before trying again.',403);
             if($receipt['done'])return array('url'=>$receipt['url']);
             $allowed=$mode==='manual'?array_merge(self::FIELDS,array('token','nonce','sets','payload_complete')):array('token','nonce','location_id','import_id','choice','revision');
             if(array_diff(array_keys($input),$allowed))return self::error('This form cannot change ownership, existing workouts or unrelated fields.');
