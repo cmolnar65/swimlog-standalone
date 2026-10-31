@@ -115,6 +115,8 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.getByRole('link',{name:'Back to calendar',exact:true}).tap();
       await page.waitForURL(/view=week/);
       await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Month',exact:true}).tap();
+      await page.waitForURL(/view=month/);
+      await page.waitForLoadState('load');
       console.log(`${name}: planned instructions/structure/match, empty/private states, desktop/mobile dialog and matched session navigation passed.`);
       const today=await page.locator('.calendar-day.is-today time').getAttribute('datetime');
       assert(await page.locator('.calendar-day.is-today .plan-day-link').count()===1);
