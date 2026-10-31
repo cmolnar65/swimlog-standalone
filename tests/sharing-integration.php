@@ -2,13 +2,13 @@
 if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable test flag required.');
 require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/WorkoutEditor.php';require_once dirname(__DIR__).'/app/PublicWorkout.php';
 use SwimlogStandalone\WorkoutEditor as E;use SwimlogStandalone\Sharing as S;use SwimlogStandalone\PublicWorkout as P;use SwimLogEvaluation\Workout_Visibility as V;use SwimLogEvaluation\Database as D;
-$f=json_decode(file_get_contents('/tmp/swimlog-sharing.json'),true);$owner=(int)$f['owner'];$ids=$f['ids'];wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];$checks=0;
+$f=json_decode(file_get_contents('/tmp/swimlog-sharing.json'),true);$owner=(int)$f['owner'];$ids=$f['ids'];$GLOBALS['sharing_owner']=$owner;wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];$checks=0;
 $check=static function($ok)use(&$checks){++$checks;if(!$ok)throw new RuntimeException('Sharing assertion '.$checks.' failed.');};
 function sharing_input($id,$op='visibility',$extra=array()){
- global $owner;$item=E::load($owner,(string)$id);$s=$item['visibility'];
+ $owner=$GLOBALS['sharing_owner'];$item=E::load($owner,(string)$id);$s=$item['visibility'];
  return array('workout_id'=>(string)$id,'operation'=>$op,'nonce'=>wp_create_nonce('standalone_workout_'.$op.'_'.$id),'revision'=>$item['revision'],'visibility_nonce'=>wp_create_nonce('swimlog_workout_visibility_'.$id),'visibility_revision'=>(string)$s['revision'])+$extra;
 }
-function sharing_submit($in,$files=array()){global $owner;return E::submit($owner,$in,$files,'https://swimlog.example.test','https://swimlog.example.test');}
+function sharing_submit($in,$files=array()){$owner=$GLOBALS['sharing_owner'];return E::submit($owner,$in,$files,'https://swimlog.example.test','https://swimlog.example.test');}
 $check(S::ready());$id=$ids['pool'];
 $in=sharing_input($id,'visibility',array('make_public'=>'1','share_route'=>'1'));
 foreach(array('nonce','visibility_nonce')as$key){$bad=$in;unset($bad[$key]);$check(is_wp_error(sharing_submit($bad)));$bad[$key]='bad';$check(is_wp_error(sharing_submit($bad)));}
