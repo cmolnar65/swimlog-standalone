@@ -70,6 +70,52 @@ const { chromium, firefox, webkit } = require('playwright');
         assert(Math.abs((await page.evaluate(()=>scrollY))-scrollBefore)<=3);
 
       }
+      // Planned swims share the desktop dialog and touch dismissal behavior.
+      for(const width of [1440,768,390,320]) {
+        await page.setViewportSize({width,height:900});
+        const entry=page.locator('a[data-plan-id="'+fixture.plans.plan+'"]').first();
+        await entry.scrollIntoViewIfNeeded();
+        const before=await page.evaluate(()=>scrollY);
+        if(width<=390)await entry.tap();else await entry.click();
+        await page.locator('#workout-dialog .planned-content').waitFor();
+        assert.equal(await page.locator('#workout-dialog-title').innerText(),'Planned workout details');
+        assert((await page.locator('#workout-dialog').innerText()).includes('Rest between sets'));
+        assert((await page.locator('#workout-dialog').innerText()).includes('Total: 100 yd'));
+        assert(!(await page.locator('#workout-dialog').innerText()).includes('PRIVATE_PLAN_NOTES_CANARY'));
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+        for(let tab=0;tab<3;tab++) {await page.keyboard.press('Tab');assert(await page.evaluate(()=>!!document.activeElement.closest('#workout-dialog')));}
+        if(width<=390)await page.touchscreen.tap(3,3);else await page.keyboard.press('Escape');
+        await page.waitForFunction(()=>!document.getElementById('workout-dialog').open && document.querySelector('[data-workout-content]').childElementCount===0);
+        assert(await entry.evaluate(el=>el===document.activeElement));
+        assert(Math.abs(await page.evaluate(()=>scrollY)-before)<=3);
+      }
+      for(const key of ['empty','broken','matched']) {
+        await page.locator('a[data-plan-id="'+fixture.plans[key]+'"]').tap();
+        await page.locator('#workout-dialog .planned-content').waitFor();
+        const text=await page.locator('#workout-dialog').innerText();
+        if(key==='empty')assert(text.includes('No instructions have been added.'));
+        if(key==='broken')assert(text.includes('linked recorded workout is unavailable')&&!text.includes('FOREIGN_STRUCTURE_CANARY'));
+        if(key==='matched') {
+          const link=page.getByRole('link',{name:'View matched recorded workout',exact:true});
+          assert((await link.getAttribute('href')).includes('workout='+fixture.workouts.pool));
+          await link.tap();await page.locator('.workout-page .workout-content').waitFor();
+          await page.getByRole('link',{name:'Back to calendar',exact:true}).tap();
+        } else {
+          await page.getByRole('button',{name:'Close workout details',exact:true}).tap();
+          await page.waitForFunction(()=>!document.getElementById('workout-dialog').open);
+        }
+      }
+      await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Week',exact:true}).tap();
+      await page.waitForURL(/view=week/);
+      await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').tap();
+      await page.locator('#workout-dialog .planned-content').waitFor();
+      const matchedLink=page.getByRole('link',{name:'View matched recorded workout',exact:true});
+      assert((await matchedLink.getAttribute('href')).includes('view=week'));
+      await matchedLink.tap();await page.locator('.workout-page .workout-content').waitFor();
+      await page.getByRole('link',{name:'Back to calendar',exact:true}).tap();
+      await page.waitForURL(/view=week/);
+      await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Month',exact:true}).tap();
+      console.log(`${name}: planned instructions/structure/match, empty/private states, desktop/mobile dialog and matched session navigation passed.`);
       // Reopening, route/no-GPS states, keyboard activation and retry.
       for(const type of ['open_water','running','walking']) {
         await page.locator('a[data-workout-id="'+fixture.workouts[type]+'"]').tap();

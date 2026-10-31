@@ -39,6 +39,15 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if ($action === 'planned_detail') {
+        if (!in_array($method,array('GET','HEAD'),true)) { header('Allow: GET, HEAD'); wp_send_json(array('error'=>'Read-only endpoint.'),405); }
+        if (!$owner) wp_send_json(array('error'=>'Sign in to view planned workout details.'),401);
+        if (!Auth::requireCapability($owner) || !wp_verify_nonce((string)($_SERVER['HTTP_X_SWIMLOG_NONCE']??''),'swimlog_planned_detail')) wp_send_json(array('error'=>'Planned workout access denied. Refresh the calendar and try again.'),403);
+        require_once dirname(__DIR__).'/app/PlannedDetails.php';
+        $detail=\SwimlogStandalone\PlannedDetails::load($owner,$_GET['id']??null);
+        if (is_wp_error($detail)) wp_send_json(array('error'=>$detail->get_error_message()),(int)($detail->get_error_data()['status']??400));
+        wp_send_json(array('html'=>\SwimlogStandalone\PlannedDetails::render($detail)),200);
+    }
     if ($action === 'workout_detail') {
         if (!in_array($method,array('GET','HEAD'),true)) { header('Allow: GET, HEAD'); wp_send_json(array('error'=>'Read-only endpoint.'),405); }
         if (!$owner) wp_send_json(array('error'=>'Sign in to view workout details.'),401);
@@ -62,6 +71,12 @@ try {
         } else {
             $calendar=\SwimlogStandalone\CalendarView::load($owner,$_GET);
             $returnUrl=is_wp_error($calendar)?'/':\SwimlogStandalone\CalendarView::url($calendar['date'],$calendar['view']);
+        }
+        if (isset($_GET['plan'],$_GET['workout'])) { http_response_code(400); exit('Choose one workout.'); }
+        if (isset($_GET['plan'])) {
+            require_once dirname(__DIR__).'/app/PlannedDetails.php';
+            $plannedDetail=\SwimlogStandalone\PlannedDetails::load($owner,$_GET['plan']);
+            if (is_wp_error($plannedDetail)) http_response_code((int)($plannedDetail->get_error_data()['status']??400));
         }
         if (isset($_GET['workout'])) {
             require_once dirname(__DIR__).'/app/WorkoutDetails.php';

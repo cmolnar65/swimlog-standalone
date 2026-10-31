@@ -1,0 +1,7 @@
+<article class="workout-content planned-content" data-plan-id="<?php echo esc_attr($detail['id']); ?>">
+<h3><?php echo esc_html($detail['title']); ?></h3>
+<dl class="workout-metrics"><?php foreach($detail['summary'] as $label=>$value): ?><div><dt><?php echo esc_html($label); ?></dt><dd><?php echo esc_html($value); ?></dd></div><?php endforeach; ?></dl>
+<section><h3>Workout instructions</h3><?php if($detail['instructions']!==''): ?><p class="instructions"><?php echo esc_html($detail['instructions']); ?></p><?php else: ?><p>No instructions have been added.</p><?php endif; ?></section>
+<section><h3>Linked structured workout</h3><?php if($detail['structure']): ?><h4><?php echo esc_html($detail['structure']['title']); ?></h4><pre class="structure-prescription"><?php echo esc_html($detail['structure']['text']); ?></pre><?php else: ?><p><?php echo esc_html($detail['structure_message']); ?></p><?php endif; ?></section>
+<section><h3>Recorded session</h3><?php if($detail['match']): ?><p>Matched to <?php echo esc_html($detail['match']['start'].' · '.$detail['match']['distance']); ?></p><a class="control" data-matched-workout href="<?php echo esc_url($returnUrl.(strpos($returnUrl,'?')===false?'?':'&').'workout='.$detail['match']['id']); ?>">View matched recorded workout</a><?php elseif($detail['match_missing']): ?><p>The linked recorded workout is unavailable.</p><?php else: ?><p>No recorded workout is matched to this plan.</p><?php endif; ?></section>
+</article>

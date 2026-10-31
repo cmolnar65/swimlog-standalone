@@ -190,3 +190,24 @@ Missing/invalid rest durations, absent elapsed time or rest exceeding elapsed le
 the calculation unavailable. Device-recorded moving time is displayed separately.
 This display calculation does not alter stored times, analytics or performances and
 is not applied to land/open-water activities.
+
+## Planned workout details
+
+Planned calendar cards now open the shared desktop/mobile dialog, with protected
+full-page links as a no-JavaScript fallback. The view shows date/time, activity,
+status, normalized planned distance/duration, pool course/stroke, and full written
+instructions. Empty instructions, unlinked/corrupt structures and unavailable
+recorded matches have explicit states. Calendar date/view survive fallback return
+and matched-session navigation.
+
+The adapter uses `Planned_Workout::get_for_user`, `Planned_Structure_Link::for_plan`,
+`Structured_Workout_Store` and `Structured_Workout_Export::text`; the existing
+exporter validates and formats prescriptions with their own declared units.
+Structured prescriptions additionally require workout-management capability.
+Matched sessions are independently resolved through `Workout::get_for_user`,
+with same-owner and same-swim-type checks; invalid/foreign links reveal no IDs.
+Notes and raw structured documents are never serialized. The read-only endpoint
+requires a real cookie, own-results capability and a separate session-bound
+`swimlog_planned_detail` nonce; foreign and absent IDs share the same 404.
+No plan status, prescription, match or history is changed. Creation/editing/moving/
+copying remain in WordPress tools for the next implementation phase.

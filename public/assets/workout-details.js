@@ -27,8 +27,9 @@
     controller?.abort(); controller = new AbortController(); const current = ++generation;
     message('Loading workout details…');
     try {
-      const url = new URL('/', window.location.origin); url.searchParams.set('action', 'workout_detail'); url.searchParams.set('id', source.dataset.workoutId);
-      const response = await fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal, headers:{'X-Swimlog-Nonce':dialog.dataset.detailNonce, 'Accept':'application/json'}});
+      const url = new URL('/', window.location.origin); const planned=!!source.dataset.planId;
+      url.searchParams.set('action', planned?'planned_detail':'workout_detail'); url.searchParams.set('id', planned?source.dataset.planId:source.dataset.workoutId);
+      const response = await fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal, headers:{'X-Swimlog-Nonce':planned?dialog.dataset.planNonce:dialog.dataset.detailNonce, 'Accept':'application/json'}});
       const data = await response.json();
       if (current !== generation || !dialog.open) return;
       if (!response.ok) {
@@ -37,16 +38,24 @@
       }
       // HTML is rendered/escaped by our authenticated PHP template; no raw records are serialized.
       content.innerHTML = data.html;
+      // Keep a matched session's fallback return link in the originating calendar view.
+      const match=planned?content.querySelector('a[data-matched-workout]'):null;
+      if(match) {
+        const context=new URL(source.href), destination=new URL(match.href);
+        for(const key of ['date','view']) if(context.searchParams.has(key)) destination.searchParams.set(key,context.searchParams.get(key));
+        match.href=destination.pathname+destination.search;
+      }
     } catch (error) {
       if (error.name !== 'AbortError' && current === generation && dialog.open) message('Could not load workout details. Please retry.', true);
     }
   }
   document.addEventListener('click', event => {
-    const source = event.target instanceof Element ? event.target.closest('a[data-workout-id]') : null;
+    const source = event.target instanceof Element ? event.target.closest('a[data-workout-id],a[data-plan-id]') : null;
     if (!source || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     if (dialog.open && source === trigger) { close(); return; }
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    dialog.querySelector('#workout-dialog-title').textContent=source.dataset.planId?'Planned workout details':'Workout details';
     trigger = source; source.setAttribute('aria-expanded', 'true');
     if (!dialog.open) {
       savedScroll = window.scrollY; document.documentElement.classList.add('workout-dialog-open');
