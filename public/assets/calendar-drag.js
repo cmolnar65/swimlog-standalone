@@ -7,7 +7,7 @@
   const desktop=matchMedia('(min-width:701px)');
   let drag=null, pending=false, suppressUntil=0;
   function enable() {
-    calendar.querySelectorAll('a[data-plan-drag]').forEach(el=>{el.draggable=desktop.matches&&!pending;});
+    calendar.querySelectorAll('a[data-plan-drag]').forEach(el=>{el.draggable=desktop.matches&&!pending&&!document.querySelector('#calendar-day-dialog[open]');});
   }
   function clearTargets(){calendar.querySelectorAll('.plan-drop-target').forEach(el=>el.classList.remove('plan-drop-target'));}
   function message(text){status.textContent=text;}

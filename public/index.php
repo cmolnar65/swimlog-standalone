@@ -119,11 +119,11 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
-        if($screen!=='calendar'&&(isset($_GET['event'])||isset($_GET['edit_event'])||isset($_GET['event_result']))) { http_response_code(400); exit('Choose the calendar to view events.'); }
+        if(!in_array($screen,array('calendar','events'),true)&&(isset($_GET['event'])||isset($_GET['edit_event'])||isset($_GET['event_result']))) { http_response_code(400); exit('Choose the calendar to view events.'); }
         require_once dirname(__DIR__).'/app/CalendarView.php';
         if (isset($eventForm)) {
             $returnUrl=$eventForm['context']['url'];
@@ -137,9 +137,19 @@ try {
             require_once dirname(__DIR__).'/app/WorkoutLog.php';
             $log=\SwimlogStandalone\WorkoutLog::load($owner,$_GET);
             $returnUrl=is_wp_error($log)?'/?screen=log':\SwimlogStandalone\WorkoutLog::url($log['filters'],$log['page']);
+        } elseif ($screen==='events') {
+            require_once dirname(__DIR__).'/app/EventList.php';
+            $eventList=\SwimlogStandalone\EventList::load($owner,$_GET);
+            $returnUrl='/?screen=events';
         } else {
             $calendar=\SwimlogStandalone\CalendarView::load($owner,$_GET);
             $returnUrl=is_wp_error($calendar)?'/':\SwimlogStandalone\CalendarView::url($calendar['date'],$calendar['view']);
+        }
+        if(isset($_GET['day'])) {
+            if($screen!=='calendar'||$intentCount) { http_response_code(400); exit('Choose one day.'); }
+            $dayCalendar=\SwimlogStandalone\CalendarView::load($owner,array('date'=>$_GET['day'],'view'=>'week'));
+            if(is_wp_error($dayCalendar)) { http_response_code(400); exit(esc_html($dayCalendar->get_error_message())); }
+            $calendar['days']=array($_GET['day']=>$dayCalendar['days'][$_GET['day']]);$calendar['weeks']=array();
         }
         if ((isset($_GET['edit_event'])||isset($_GET['event_result']))&&!isset($eventForm)) {
             require_once dirname(__DIR__).'/app/EventWorkflow.php';

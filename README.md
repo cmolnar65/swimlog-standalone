@@ -361,3 +361,5 @@ Tests use synthetic events/locations only and cover owned/private reads, foreign
 locations, XSS escaping, historical creation, result precision, stale/invalid/
 CSRF requests, preserved results and metadata, explicit clearing, cancellation,
 desktop/mobile pop-ups and forms, and older admin-helper compatibility.
+
+Calendar day overflow uses the plugin’s 180px desktop / 200px mobile item budget. The “…” opens a full day dialog with all original detail links; nested detail dialogs retain editing, moving, copying and matching actions. A real day URL provides a non-JavaScript fallback. The Events menu provides List Events and Add Event; the owner-scoped list supports upcoming/past/all filters and 20-item pages. Notes remain in the authorized details/editor only.

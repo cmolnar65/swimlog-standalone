@@ -10,7 +10,7 @@
     ++generation;
     controller?.abort(); controller = null;
     content.replaceChildren();
-    document.documentElement.classList.remove('workout-dialog-open');
+    if(!document.querySelector('#calendar-day-dialog[open]')) document.documentElement.classList.remove('workout-dialog-open');
     const previous = trigger; trigger = null;
     if (previous?.isConnected) { previous.setAttribute('aria-expanded', 'false'); previous.focus({preventScroll:true}); }
     window.scrollTo(0,savedScroll);
