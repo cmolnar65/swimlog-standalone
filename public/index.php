@@ -149,6 +149,7 @@ try {
             if($screen!=='calendar'||$intentCount) { http_response_code(400); exit('Choose one day.'); }
             $dayCalendar=\SwimlogStandalone\CalendarView::load($owner,array('date'=>$_GET['day'],'view'=>'week'));
             if(is_wp_error($dayCalendar)) { http_response_code(400); exit(esc_html($dayCalendar->get_error_message())); }
+            if(is_wp_error($calendar)) { http_response_code(400); exit(esc_html($calendar->get_error_message())); }
             $calendar['days']=array($_GET['day']=>$dayCalendar['days'][$_GET['day']]);$calendar['weeks']=array();
         }
         if ((isset($_GET['edit_event'])||isset($_GET['event_result']))&&!isset($eventForm)) {
