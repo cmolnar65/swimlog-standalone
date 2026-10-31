@@ -20,13 +20,13 @@ jobs:
         ports: ['3306:3306']
         options: --health-cmd="mysqladmin ping -psynthetic-only" --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
         with:
           repository: cmolnar65/swim-log-evaluation
           ref: 91ed4d3a8070fcb56b09cd3b0bae41a3fe29896d
           path: plugin-reference
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
         with:
           repository: cmolnar65/swim-log-evaluation
           ref: 01aa3162f1ca283142f1e6192b116110f0ab31bb
