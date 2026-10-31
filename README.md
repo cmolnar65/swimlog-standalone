@@ -84,3 +84,12 @@ login redirect. Chromium, Firefox and WebKit exercise actual form submissions in
 the disposable environment using real local HTTPS hosts with an ephemeral test
 certificate and a local WordPress backend. This tests browser header/CSP/redirect
 behavior; production certificates, proxies and site plugins still need acceptance.
+
+### Release-switch regression
+
+The application pins its executing release before WordPress loads. The MU loader
+honors that pin instead of resolving `current` a second time. A fresh-process test
+loads a new application with `current` deliberately pointing at a different copy
+of Auth; it also checks ordinary WordPress loading. Activation/rollback reload
+Apache to invalidate mod_php/realpath caches before health checking. Existing
+installations must update the companion loader once with the backed-up installer.

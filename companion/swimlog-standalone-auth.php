@@ -5,7 +5,7 @@
  * License: GPL-3.0-or-later
  */
 if (!defined('ABSPATH')) exit;
-require_once dirname(__DIR__) . '/app/Auth.php';
+if (!class_exists('SwimlogStandalone\\Auth', false)) require_once dirname(__DIR__) . '/app/Auth.php';
 add_action('swimlog_sso_cleanup', array('SwimlogStandalone\\Auth', 'cleanup'));
 add_action('init', function () {
     if (isset($_GET['swimlog_standalone_auth']) && $_GET['swimlog_standalone_auth'] === '1') swimlog_standalone_auth_handoff();

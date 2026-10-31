@@ -1,4 +1,7 @@
 <?php
+// Apache workers may retain a previous resolution of the current symlink.
+// Make the MU loader use the exact release already executing this request.
+if (!defined('SWIMLOG_STANDALONE_RELEASE_DIR')) define('SWIMLOG_STANDALONE_RELEASE_DIR', dirname(__DIR__));
 require_once __DIR__ . '/Auth.php';
 $configFile = getenv('SWIMLOG_CONFIG') ?: '/var/www/swimlog.cmolnar.com/shared/config/app.php';
 if (!is_readable($configFile)) throw new RuntimeException('Application configuration unavailable.');

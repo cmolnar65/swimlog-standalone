@@ -32,15 +32,27 @@ activate)
     [[ $sha =~ ^[a-f0-9]{40}$ && -f "$root/releases/$sha/public/index.php" ]] || exit 1
     [[ -r "$root/shared/config/app.php" ]] || { echo 'Install configuration first.'; exit 1; }
     [[ -L $root/current && ! -e $root/.current-next ]] || exit 1
+    loader=/var/www/cmolnar.com/wp-content/mu-plugins/swimlog-standalone-loader.php
+    if [[ -f $loader ]] && ! grep -q 'SWIMLOG_STANDALONE_RELEASE_DIR' "$loader"; then
+        echo 'Update the companion loader first: sudo bash scripts/install-companion.sh'; exit 1
+    fi
     previous=$(readlink "$root/current")
     [[ $previous =~ ^releases/(bootstrap|[a-f0-9]{40})$ ]] || exit 1
     printf '%s\n' "$previous" > "$root/deploy/previous"
     ln -s "releases/$sha" "$root/.current-next"
     mv -Tf "$root/.current-next" "$root/current"
+    # Flush Apache/mod_php OPcache and worker realpath caches before health checks.
+    if ! sudo systemctl reload apache2; then
+        ln -s "$previous" "$root/.current-next"
+        mv -Tf "$root/.current-next" "$root/current"
+        sudo systemctl reload apache2 || true
+        echo 'Apache reload failed; previous release restored.'; exit 1
+    fi
     # No redirect following: the app must return its own expected login page.
     if ! curl --fail --silent --show-error --max-time 20 https://swimlog.cmolnar.com/ | grep -q 'Sign in with cmolnar.com'; then
         ln -s "$previous" "$root/.current-next"
         mv -Tf "$root/.current-next" "$root/current"
+        sudo systemctl reload apache2 || true
         echo 'Health check failed; previous release restored.'; exit 1
     fi
     printf '%s activated %s\n' "$(date -u +%FT%TZ)" "$sha" >> "$root/deploy/history.log"
@@ -51,6 +63,7 @@ rollback)
     [[ $previous =~ ^releases/(bootstrap|[a-f0-9]{40})$ && -d "$root/$previous/public" && ! -e $root/.current-next ]] || exit 1
     ln -s "$previous" "$root/.current-next"
     mv -Tf "$root/.current-next" "$root/current"
+    sudo systemctl reload apache2
     printf '%s rollback %s\n' "$(date -u +%FT%TZ)" "$previous" >> "$root/deploy/history.log"
     echo "Restored $previous."
     ;;

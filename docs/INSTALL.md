@@ -35,12 +35,16 @@ by the application: configure HTTPS recognition at the trusted server/proxy boun
 
 ```bash
 bash scripts/deploy.sh prepare FULL_APPROVED_COMMIT_SHA
-bash scripts/deploy.sh activate FULL_APPROVED_COMMIT_SHA
 sudo bash scripts/install-companion.sh
+bash scripts/deploy.sh activate FULL_APPROVED_COMMIT_SHA
 ```
 
-The first activation health check checks only the public login page. The companion
-is installed after that activation and is necessary before testing sign-in. Its
+Install/update the companion loader before activation when an application release
+is already active. For the first installation from bootstrap, prepare the release,
+activate it, then install the companion loader. The public health check does not
+require the companion. The installer backs up an existing loader before replacing it.
+Activation and rollback reload Apache before health checks to clear mod_php/realpath
+caches; the deployment user needs sudo permission for that reload. Its
 loader is `/var/www/cmolnar.com/wp-content/mu-plugins/swimlog-standalone-loader.php`;
 it loads the companion from `current` and does nothing if bootstrap is selected.
 It does not edit the original Swim Log plugin or WordPress core.
@@ -73,3 +77,11 @@ home name, denied missing capability, exact host-only cookies, refresh/expiry,
 wrong-browser handoff rejection, repeated callback denial, logout on either host,
 HTTP-to-HTTPS enforcement for the application, no-store responses and mobile layout.
 No private data, cookie, handoff payload or request body belongs in Git or CI logs.
+
+## Release consistency
+
+The application pins `SWIMLOG_STANDALONE_RELEASE_DIR` before loading WordPress.
+The release-aware MU loader honors that pin for application requests; ordinary
+WordPress requests use `current`. This prevents loading two copies of the Auth
+class from different releases during a symlink switch. Reinstall the loader once
+when upgrading from the original loader. The installer preserves a backup in deploy/.

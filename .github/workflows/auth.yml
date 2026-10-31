@@ -32,6 +32,7 @@ jobs:
           set -e
           while IFS= read -r -d '' file; do php -l "$file"; done < <(find app public companion config tests -name '*.php' -print0)
           bash -n scripts/deploy.sh scripts/install-companion.sh
+          php tests/release-loader.php
       - name: Fresh synthetic WordPress integration
         env:
           SWIMLOG_SYNTHETIC_TEST: '1'
@@ -51,7 +52,7 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
           printf '%s\n' "<?php return ['wordpress_load'=>'/tmp/swimlog-wp/wp-load.php','wordpress_origin'=>'https://wordpress.example.test','app_origin'=>'https://swimlog.example.test'];" > /tmp/swimlog-config.php
           mkdir -p /tmp/swimlog-wp/wp-content/mu-plugins
-          printf '%s\n' "<?php require '$GITHUB_WORKSPACE/companion/swimlog-standalone-auth.php';" > /tmp/swimlog-wp/wp-content/mu-plugins/standalone.php
+          python3 -c 'import os,pathlib; source=pathlib.Path("companion/loader.php").read_text(); pathlib.Path("/tmp/swimlog-wp/wp-content/mu-plugins/standalone.php").write_text(source.replace("/var/www/swimlog.cmolnar.com/current", os.environ["GITHUB_WORKSPACE"]))'
           php -S 127.0.0.1:8099 tests/router.php > /tmp/swimlog-http.log 2>&1 &
           server=$!
           trap 'kill "$server"; rm -f /tmp/swimlog-web.json' EXIT

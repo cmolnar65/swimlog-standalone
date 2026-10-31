@@ -7,13 +7,18 @@ wp=/var/www/cmolnar.com
 [[ -r "$root/shared/config/app.php" ]] || exit 1
 install -d -m 0755 "$wp/wp-content/mu-plugins"
 loader="$wp/wp-content/mu-plugins/swimlog-standalone-loader.php"
-[[ ! -e $loader ]] || { echo 'Loader already exists; left unchanged.'; exit 0; }
-cat > "$loader" <<'PHP'
-<?php
-// Standalone companion loader. Does not modify the Swim Log plugin.
-$file = '/var/www/swimlog.cmolnar.com/current/companion/swimlog-standalone-auth.php';
-if (is_readable($file)) require_once $file;
-PHP
-chmod 0644 "$loader"
-php -l "$loader"
-echo 'Companion installed. Rollback to bootstrap makes this loader inert.'
+source_file="$(cd "$(dirname "$0")/.." && pwd)/companion/loader.php"
+php -l "$source_file"
+if [[ -e $loader ]]; then
+    backup=$(mktemp "$root/deploy/companion-loader-backup.XXXXXXXX")
+    cp -p "$loader" "$backup"
+    echo "Previous loader backed up: $backup"
+fi
+# Rename in the same directory so WordPress never sees a partial loader.
+staged=$(mktemp "$wp/wp-content/mu-plugins/.swimlog-loader.XXXXXXXX")
+trap 'test ! -f "$staged" || unlink "$staged"' EXIT
+install -o root -g root -m 0644 "$source_file" "$staged"
+mv -f "$staged" "$loader"
+trap - EXIT
+systemctl reload apache2
+echo 'Release-aware companion loader installed; Apache reloaded.'
