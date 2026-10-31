@@ -241,6 +241,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.waitForURL(url=>url.searchParams.get('date')===from);
       let draggable=page.locator('a[data-plan-id="'+dragId+'"]').first();
       assert.equal(await draggable.getAttribute('draggable'),'true');
+      console.log(name+': drag source '+JSON.stringify(await draggable.evaluate(el=>({width:innerWidth,cell:el.closest('.calendar-day').dataset.date,items:Array.from(el.parentElement.children).map(x=>({text:x.textContent,hidden:x.hidden,height:x.getBoundingClientRect().height,width:x.getBoundingClientRect().width}))}))));
       assert.equal(await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').count() ? await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').getAttribute('draggable') : 'false','false');
       await draggable.dragTo(page.locator('.calendar-day[data-date="'+to+'"]'));
       await page.waitForURL(url=>url.searchParams.get('date')===to&&url.searchParams.get('plan_result')==='moved');
