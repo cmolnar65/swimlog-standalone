@@ -2,6 +2,7 @@
 if (getenv('SWIMLOG_SYNTHETIC_TEST') !== '1') throw new RuntimeException('Disposable test flag required.');
 $owner = get_user_by('login', 'synthetic_swimmer');
 $other = get_user_by('login', 'synthetic_other');
+$other->add_cap('swimlog_view_own_results', false);
 global $wpdb;
 $wpdb->update($wpdb->users, array('display_name' => '<script>synthetic</script>'), array('ID' => $owner->ID));
 clean_user_cache($owner->ID);

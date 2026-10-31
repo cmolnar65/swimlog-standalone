@@ -1,4 +1,4 @@
-name: Authentication
+name: Standalone checks
 on:
   push:
   pull_request:
@@ -21,6 +21,11 @@ jobs:
         options: --health-cmd="mysqladmin ping -psynthetic-only" --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: cmolnar65/swim-log-evaluation
+          ref: 91ed4d3a8070fcb56b09cd3b0bae41a3fe29896d
+          path: plugin-reference
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '${{ matrix.php }}'
@@ -31,7 +36,7 @@ jobs:
         run: |
           set -e
           while IFS= read -r -d '' file; do php -l "$file"; done < <(find app public companion config tests -name '*.php' -print0)
-          bash -n scripts/deploy.sh scripts/install-companion.sh
+          for script in scripts/*.sh; do bash -n "$script"; done
           php tests/release-loader.php
       - name: Fresh synthetic WordPress integration
         env:
@@ -49,7 +54,13 @@ jobs:
           SWIMLOG_CONFIG: /tmp/swimlog-config.php
           SWIMLOG_WEB_FIXTURE: /tmp/swimlog-web.json
         run: |
+          if [ ! -d /tmp/swimlog-wp/wp-content/plugins/swimlog-core ]; then
+            cp -a plugin-reference /tmp/swimlog-wp/wp-content/plugins/swimlog-core
+            wp plugin activate swimlog-core --path=/tmp/swimlog-wp
+            wp eval-file "$GITHUB_WORKSPACE/tests/calendar-fixture.php" --path=/tmp/swimlog-wp
+          fi
           wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-integration.php" --path=/tmp/swimlog-wp
           printf '%s\n' "<?php return ['wordpress_load'=>'/tmp/swimlog-wp/wp-load.php','wordpress_origin'=>'https://wordpress.example.test','app_origin'=>'https://swimlog.example.test'];" > /tmp/swimlog-config.php
           mkdir -p /tmp/swimlog-wp/wp-content/mu-plugins
           python3 -c 'import os,pathlib; source=pathlib.Path("companion/loader.php").read_text(); pathlib.Path("/tmp/swimlog-wp/wp-content/mu-plugins/standalone.php").write_text(source.replace("/var/www/swimlog.cmolnar.com/current", os.environ["GITHUB_WORKSPACE"]))'

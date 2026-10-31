@@ -1,13 +1,22 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Swim Log</title><link rel="stylesheet" href="/assets/app.css"></head>
-<body><main><p class="eyebrow">SWIM LOG</p>
-<?php if ($signedIn): ?>
-<h1>Welcome, <?php echo esc_html(wp_get_current_user()->display_name); ?></h1>
-<p>Your dedicated Swim Log is taking shape.</p><p>Workout features will appear here as development continues.</p>
-<form method="post" action="/?action=logout"><input type="hidden" name="nonce" value="<?php echo esc_attr(wp_create_nonce('swimlog_standalone_logout')); ?>"><button>Log out</button></form>
+<?php
+$wordpressHost = parse_url($config['wordpress_origin'], PHP_URL_HOST);
+$tools = array(
+    array('Workout log','swimlog-workouts','swimlog_manage_own_workouts'),
+    array('Planned workouts','swimlog-planned-workouts','swimlog_manage_own_workouts'),
+    array('Structured workouts','swimlog-structured-workouts','swimlog_manage_own_workouts'),
+    array('Personal bests','swimlog-personal-bests','swimlog_view_own_results'),
+    array('Garmin Connect','swimlog-garmin','swimlog_view_own_results'),
+    array('Preferences','swimlog-privacy','swimlog_view_own_results'),
+);
+?>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?php echo $signedIn?'Calendar · ':''; ?>Swim Log</title><link rel="icon" type="image/png" href="/assets/brand/icon.png"><link rel="stylesheet" href="/assets/app.css"></head>
+<body><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-header"><div class="header-inner"><a class="brand" href="/"><img src="/assets/brand/icon.png" width="48" height="48" alt=""><span>Chris’s Swim Log<small>Training progress &amp; evaluation</small></span></a>
+<?php if($signedIn): ?><nav class="top-nav" aria-label="Main navigation"><a class="nav-link" href="/" aria-current="page">Calendar</a><details class="tools-menu"><summary>WordPress tools</summary><div class="tools-links"><?php foreach($tools as $tool): if(current_user_can($tool[2])): ?><a href="<?php echo esc_url($config['wordpress_origin'].'/wp-admin/admin.php?page='.$tool[1]); ?>"><?php echo esc_html($tool[0]); ?></a><?php endif; endforeach; ?></div></details><form method="post" action="/?action=logout"><input type="hidden" name="nonce" value="<?php echo esc_attr(wp_create_nonce('swimlog_standalone_logout')); ?>"><button class="logout">Log out</button></form></nav><?php endif; ?></div></header>
+<main id="main-content" class="site-main">
+<?php if($signedIn): ?>
+<section class="welcome-strip"><div><p class="eyebrow">MAKE EVERY LENGTH COUNT</p><h1 class="greeting">Welcome, <?php echo esc_html(wp_get_current_user()->display_name); ?></h1><p>Your sessions, plans and events. One clear view.</p></div><img class="brand-banner" src="/assets/brand/banner.png" width="1544" height="500" alt="Chris’s Swim Training Progress and Evaluation"></section>
+<?php require __DIR__.'/calendar.php'; ?>
 <?php else: ?>
-<h1>Your swimming, in one place.</h1>
-<p><?php echo isset($_GET['signed_out']) ? 'You have been signed out.' : 'Sign in using your existing cmolnar.com WordPress account.'; ?></p>
-<form method="post" action="/?action=login"><button>Sign in with cmolnar.com</button></form>
-<?php endif; ?>
-</main></body></html>
+<section class="login-card"><img class="login-banner" src="/assets/brand/banner.png" width="1544" height="500" alt="Chris’s Swim Training Progress and Evaluation"><div class="login-content"><p class="eyebrow">YOUR NEXT CHAPTER IN THE WATER</p><h1>Your swimming, in one place.</h1><p><?php echo isset($_GET['signed_out'])?'You have been signed out.':'Sign in using your existing '.esc_html($wordpressHost).' WordPress account.'; ?></p><form method="post" action="/?action=login" data-swimlog-login><button>Sign in with <?php echo esc_html($wordpressHost); ?></button></form></div></section>
+<?php endif; ?></main><footer class="site-footer">Chris’s Swim Training Progress and Evaluation</footer></body></html>

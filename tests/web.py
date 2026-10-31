@@ -33,7 +33,7 @@ app_origin = 'https://' + app
 main_origin = 'https://' + main
 main_cookie = fixture['name'] + '=' + fixture['cookie']
 status, headers, body = request(app)
-check(status == 200 and 'Sign in with cmolnar.com' in body and 'Welcome,' not in body)
+check(status == 200 and 'Sign in with wordpress.example.test' in body and 'Welcome,' not in body)
 check('no-store' in headers['Cache-Control'])
 check(headers['Referrer-Policy'] == 'strict-origin-when-cross-origin')
 check(main_origin in headers['Content-Security-Policy'])

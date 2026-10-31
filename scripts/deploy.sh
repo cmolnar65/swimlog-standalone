@@ -49,7 +49,7 @@ activate)
         echo 'Apache reload failed; previous release restored.'; exit 1
     fi
     # No redirect following: the app must return its own expected login page.
-    if ! curl --fail --silent --show-error --max-time 20 https://swimlog.cmolnar.com/ | grep -q 'Sign in with cmolnar.com'; then
+    if ! curl --fail --silent --show-error --max-time 20 https://swimlog.cmolnar.com/ | grep -q 'data-swimlog-login'; then
         ln -s "$previous" "$root/.current-next"
         mv -Tf "$root/.current-next" "$root/current"
         sudo systemctl reload apache2 || true

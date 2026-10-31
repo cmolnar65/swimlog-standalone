@@ -3,7 +3,7 @@ use SwimlogStandalone\Auth;
 try {
     $config = require dirname(__DIR__) . '/app/bootstrap.php';
     Auth::headers();
-    header("Content-Security-Policy: default-src 'none'; style-src 'self'; form-action 'self' " . $config['wordpress_origin'] . "; frame-ancestors 'none'; base-uri 'none'");
+    header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; form-action 'self' " . $config['wordpress_origin'] . "; frame-ancestors 'none'; base-uri 'none'");
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ($host !== parse_url($config['app_origin'], PHP_URL_HOST)) { http_response_code(400); exit('Invalid host.'); }
     if (!is_ssl()) {
@@ -42,6 +42,10 @@ try {
     if ($action !== '' || !in_array($method, array('GET', 'HEAD'), true)) { http_response_code(404); exit('Not found.'); }
     if ($owner && !Auth::requireCapability($owner)) { http_response_code(403); exit('Your account does not have Swim Log access.'); }
     $signedIn = $owner > 0;
+    if ($signedIn) {
+        require_once dirname(__DIR__) . '/app/CalendarView.php';
+        $calendar = \SwimlogStandalone\CalendarView::load($owner, $_GET);
+    }
     require dirname(__DIR__) . '/app/home.php';
 } catch (Throwable $error) {
     http_response_code(isset($action) && $action === 'callback' ? 403 : 503);

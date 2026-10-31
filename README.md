@@ -2,7 +2,8 @@
 
 Dedicated interface for https://swimlog.cmolnar.com. WordPress at
 `/var/www/cmolnar.com/wp-load.php` remains the identity/session and data authority.
-No Swim Log business data is read or changed in this phase. No plugin schema,
+The calendar reads owner-scoped records through the existing plugin services. No
+Swim Log business records are changed by this interface. No plugin schema,
 Swim Log source, main-plugin release, SVN or production database copy is involved.
 
 ## Layout
@@ -16,9 +17,10 @@ Swim Log source, main-plugin release, SVN or production database copy is involve
 
 PHP 7.4–8.5, OpenSSL, and a single-site WordPress installation are the intended
 compatibility range. CI verifies the PHP matrix against a fresh current WordPress.
-This phase uses only the existing `swimlog_view_own_results` capability; there is
-no dependency on a particular Swim Log schema because no business records are queried.
-Missing capabilities fail closed. Later features need explicit plugin/schema checks.
+Authentication requires the existing `swimlog_view_own_results` capability.
+Calendar reads additionally honor private-land capabilities and require the installed
+schema to be at least the active plugin runtime schema. The tested plugin checkpoint
+is recorded in CI and branding provenance. Missing capabilities fail closed.
 
 ## Authentication boundary
 
@@ -93,3 +95,22 @@ loads a new application with `current` deliberately pointing at a different copy
 of Auth; it also checks ordinary WordPress loading. Activation/rollback reload
 Apache to invalidate mod_php/realpath caches before health checking. Existing
 installations must update the companion loader once with the backed-up installer.
+
+## Branded calendar home
+
+The signed-in home now reads the existing plugin Calendar service directly, with
+current-owner cookie/capability checks and no external REST opt-in requirement.
+Month/week navigation respects the swimmer's week start and site timezone. Desktop
+uses a seven-column grid; phones use a date agenda with native expandable entries.
+Swimming, running and walking totals remain separate and come from the plugin's
+weekly summary. No copied calculation/persistence layer or database migration is
+introduced. An incomplete installed schema produces a controlled error; the app
+does not run upgrades. Measurements and editing are later phases, with existing
+WordPress pages linked from a capability-filtered tools menu in the meantime.
+
+See [branding provenance](docs/BRANDING.md) and [carried-forward requirements](docs/ROADMAP.md).
+Tests activate the pinned plugin only in a disposable WordPress database. Synthetic
+mixed-owner/swim/land/event/plan fixtures cover owner isolation, separate totals,
+null/zero distances, leap February, all week starts and schema errors. Browser tests
+cover real authentication plus calendar navigation, touch details and no horizontal
+overflow at 1440, 768, 390 and 320 CSS pixels in Chromium, Firefox and WebKit.
