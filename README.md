@@ -502,3 +502,21 @@ requires its own capability/nonce and keeps the dynamic Swim Log block. Deletion
 uses Workout::delete, which owns canonical/provisional cleanup. Canonical visibility
 writes occur only in set_for_owner/adopt_standalone_preference. No plugin repository,
 main/release, server or SVN changes are performed by this app work.
+
+## Evaluation → Personal Bests
+
+The signed-in Evaluation menu opens the owner's private swimming Personal Bests
+at `/?screen=bests`. It uses the installed plugin's Records, Evaluator and
+Age_Group services for lifetime/current/historical age-group records, separate
+meters/yards courses, and progression. Running and walking do not generate swim
+performances; no land records or measurements are included. No public aggregate
+page is added. Record links open existing owner-protected workout details with
+keyboard and touch dismissal. Missing progression support fails gracefully while
+retaining the bests screen; the current plugin's `Records::history()` contains a
+`returnDatabase::read` typo requiring a separately approved plugin correction.
+
+The WordPress Tools dropdown and its duplicate PB link have been removed.
+Main Site links to the configured `wordpress_origin` root, without a hard-coded
+hostname. Explicit WordPress links for functions not yet ported (such as PDF
+training-plan import and post editing) remain available in their existing flows.
+Earlier menu descriptions above record historical implementation checkpoints.

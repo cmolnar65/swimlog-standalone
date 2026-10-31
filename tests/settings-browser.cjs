@@ -10,7 +10,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),engines=require
  assert.equal(await page.getByLabel('Garmin Personal API key',{exact:true}).inputValue(),'');
  for(const width of [1440,1024,768,390,320]){
  await page.setViewportSize({width,height:900});
- for(const selector of ['.settings-menu','.garmin-menu','.wordpress-menu']){
+ for(const selector of ['.settings-menu','.garmin-menu','.evaluation-menu']){
  const menu=page.locator(selector);await menu.locator(':scope > summary').click();
  await page.waitForFunction(()=>document.querySelectorAll('.top-nav > details[open]').length===1);
  assert(await menu.evaluate(el=>el.open));await page.waitForTimeout(60);
@@ -19,7 +19,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),engines=require
  }
  await page.keyboard.press('Escape');
  }
- const tools=page.locator('.wordpress-menu');assert.equal(await tools.locator('a').count(),1);assert.equal(await tools.locator('a').textContent(),'Personal bests');
+ const tools=page.locator('.evaluation-menu');assert.equal(await tools.locator('a').count(),1);assert.equal(await tools.locator('a').textContent(),'Personal Bests');
  await page.goto('https://swimlog.example.test/?screen=swimmer');await page.getByLabel('First day of calendar week',{exact:true}).selectOption('monday');await page.getByRole('button',{name:'Save swimmer configuration',exact:true}).click();await page.getByText('Settings saved.',{exact:true}).waitFor();
  await page.goto('https://swimlog.example.test/?screen=locations');await page.getByLabel('Location name',{exact:true}).fill('Synthetic '+name+' pool');await page.getByLabel('Pool length (optional)',{exact:true}).fill('25');await page.getByLabel('Pool unit',{exact:true}).selectOption('m');await page.getByRole('button',{name:'Save location',exact:true}).click();await page.getByText('Settings saved.',{exact:true}).waitFor();
  await page.goto('https://swimlog.example.test/?screen=garmin_activities');await page.getByRole('button',{name:'Find activities',exact:true}).click();await page.getByText(/Synthetic Garmin pool/).waitFor();

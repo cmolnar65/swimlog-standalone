@@ -124,7 +124,7 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log','events'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
@@ -138,6 +138,11 @@ try {
             $returnUrl=$planActionForm['context']['url'];
         } elseif (isset($planForm)) {
             $returnUrl=$planForm['context']['url'];
+        } elseif ($screen==='bests') {
+            require_once dirname(__DIR__).'/app/PersonalBests.php';
+            $bests=\SwimlogStandalone\PersonalBests::load($owner,$_GET);
+            if(is_wp_error($bests))http_response_code((int)($bests->get_error_data()['status']??400));
+            $returnUrl='/?screen=bests';
         } elseif ($screen==='log') {
             require_once dirname(__DIR__).'/app/WorkoutLog.php';
             $log=\SwimlogStandalone\WorkoutLog::load($owner,$_GET);
