@@ -39,7 +39,7 @@ check(request(auth=False)[0]==401)
 check(request('/?action=manual_save')[0]==405)
 status,headers,body=request();check(status==200 and 'Add Workout' in body)
 f=values(body,'manual-entry');f={k:v for k,v in f.items()if not k.startswith('sets[')}
-f.update({'workout_date':'2002-01-02','workout_time':'08:00','pool_length':'25','course_unit':'m','total_distance':'200','duration':'4:00.123','notes':'SYNTHETIC_PRIVATE_ENTRY'})
+f.update({'workout_date':'2002-01-02','workout_time':'08:00','pool_length':'25','course_unit':'m','location_id':'0','total_distance':'200','duration':'4:00.123','notes':'SYNTHETIC_PRIVATE_ENTRY'})
 check(request('/?action=manual_save',f,origin='https://evil.example.test')[0]==403)
 check(request('/?action=manual_save',{**f,'nonce':'bad'})[0]==403)
 check(request('/?action=manual_save',{**f,'workout_id':'1'})[0]==422)
