@@ -148,7 +148,7 @@ const { chromium, firefox, webkit } = require('playwright');
       const originalTitle=`Synthetic ${name} browser plan`;
       await page.getByLabel('Title',{exact:true}).fill(originalTitle);
       await page.getByLabel('Planned distance (optional)',{exact:true}).fill('500');
-      await page.getByLabel('Distance unit',{exact:true}).selectOption('yd');
+      await page.locator('.swimlog-structure-unit select').selectOption('yd');
       await page.getByLabel('Pool length (optional)',{exact:true}).fill('25');
       await page.getByLabel('Pool course',{exact:true}).selectOption('yd');
       await page.getByLabel('Workout instructions (optional)',{exact:true}).fill('Synthetic instructions with a quote " and backslash \\');
@@ -503,7 +503,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.locator('#swimlog-structure-editor [data-swimlog-preview]').waitFor();
       const structureTitle='Synthetic standalone structure '+name;
       await page.getByLabel('Workout title',{exact:true}).fill(structureTitle);
-      await page.getByLabel('Distance unit',{exact:true}).selectOption('yd');
+      await page.locator('.swimlog-structure-unit select').selectOption('yd');
       await page.getByRole('button',{name:'+ Repeat',exact:true}).first().click();
       for(const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
