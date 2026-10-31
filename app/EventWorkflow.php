@@ -68,7 +68,7 @@ final class EventWorkflow {
         finally { Database::read('get_var',$wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock)); }
     }
     private static function save($owner,$id,$op,$input) {
-        $form=self::open($owner,$id,$op,$input);if(is_wp_error($form))return $form;
+        $form=self::open($owner,$id,$op,array('date'=>$input['date']??wp_date('Y-m-d'),'view'=>$input['view']??'month'));if(is_wp_error($form))return $form;
         $fields=$op==='edit'?self::FIELDS:array('result_time','placement','notes');
         if(array_diff(array_keys($input),array_merge($fields,array('event_id','operation','nonce','revision','date','view'),$op==='result'?array('clear_result'):array())))$form['error']=self::error('This form cannot change ownership or fields from another event operation.',422);
         foreach($fields as$key) {

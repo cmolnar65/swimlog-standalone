@@ -12,6 +12,7 @@ $html=EW::render($d);event_check(strpos($html,'PRIVATE_EVENT_NOTES_CANARY')!==fa
 $foreign=EW::detail($owner,$ids['foreign']);$missing=EW::detail($owner,99999999);event_check(is_wp_error($foreign)&&$foreign->get_error_message()===$missing->get_error_message());
 foreach(array(null,array('bad'),0,-1,'1 OR 1=1')as$id)event_check(is_wp_error(EW::detail($owner,$id)));
 $input=event_input(EW::open($owner,'new','edit',array('view'=>'week')));$input['event_name']='Synthetic integration event';$input['event_date']='2001-02-03';$input['event_time']='07:30';$input['course_unit']='yd';$input['location_id']=(string)$ids['location'];$input['notes']="Quote \" and backslash \\";
+$invalidCreate=event_submit(array_replace($input,array('event_date'=>'2026-02-30')));event_check(isset($invalidCreate['form'])&&$invalidCreate['form']['values']['event_name']===$input['event_name']&&$invalidCreate['form']['error']->get_error_data()['status']===422);
 $r=event_submit($input);event_check(isset($r['id'])&&strpos($r['url'],'view=week')!==false);$id=$r['id'];$row=Event::get_for_user($id,$owner);
 event_check($row->event_date==='2001-02-03'&&$row->course_unit==='yd'&&$row->notes===$input['notes']);
 $form=EW::open($owner,$id,'result');$input=event_input($form);$input['result_time']='1:23.456';$input['placement']='2';$input['notes']='Synthetic result notes';$r=event_submit($input);event_check(isset($r['id']));
@@ -27,6 +28,7 @@ $clear['clear_result']='1';$r=event_submit($clear);$row=Event::get_for_user($id,
 event_check(is_wp_error(event_submit(array_replace($base,array('nonce'=>'bad'))))&&is_wp_error(EW::submit($owner,$base,'https://evil.example.test','https://swimlog.example.test')));
 $forged=$base;$forged['event_id']=$ids['foreign'];$forged['nonce']=wp_create_nonce('swimlog_event_result_'.$ids['foreign']);event_check(is_wp_error(event_submit($forged)));
 $d['title']='<script>synthetic</script>';$d['notes']='<img src=x onerror=alert(1)>';$html=EW::render($d);event_check(strpos($html,'<script>')===false&&strpos($html,'<img')===false&&strpos($html,'&lt;script&gt;')!==false);
+$user=get_user_by('id',$owner);$user->add_cap('swimlog_manage_own_workouts',false);wp_set_current_user(0);wp_set_current_user($owner);event_check(!is_wp_error(EW::open($owner,$id,'result')));$user->add_cap('swimlog_manage_own_workouts');wp_set_current_user(0);wp_set_current_user($owner);
 $user=get_user_by('id',$owner);$user->add_cap('swimlog_manage_own_events',false);wp_set_current_user(0);wp_set_current_user($owner);$private=EW::detail($owner,$ids['own']);
 event_check(!is_wp_error($private)&&$private['notes']===null&&$private['result']===null&&strpos(EW::render($private),'PRIVATE_EVENT_NOTES_CANARY')===false);
 event_check(is_wp_error(EW::open($owner,$id,'result'))&&is_wp_error(event_submit($base)));
