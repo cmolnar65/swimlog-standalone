@@ -27,10 +27,15 @@ final class PlannedDetails {
             $recorded=Workout::get_for_user((int)$plan->completed_workout_id,$owner);
             if($recorded&&in_array($recorded->workout_type,array('pool','open_water'),true)&&$recorded->workout_type===$plan->workout_type) $match=array('id'=>(int)$recorded->id,'start'=>$recorded->workout_start,'distance'=>CalendarView::distance($recorded->total_distance_m));
         }
+        $editable=false;
         $structure=null; $structureMessage='No structured workout is linked.';
         if(current_user_can('swimlog_manage_own_workouts')) {
             foreach(array('structured-workout','structured-workout-store','planned-structure-link','structured-workout-export') as $file) require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
             $linked=\SwimLogEvaluation\Planned_Structure_Link::for_plan((int)$id,$owner);
+            if(!is_wp_error($linked)&&empty($plan->completed_workout_id)) {
+                $locked=$linked?\SwimLogEvaluation\Structured_Workout_Store::is_locked($linked['id'],$owner):false;
+                $editable=!is_wp_error($locked)&&!$locked;
+            }
             if(is_wp_error($linked)) $structureMessage='The linked structured workout is unavailable. Your planned instructions remain below.';
             elseif($linked) {
                 if(strlen((string)wp_json_encode($linked['document']))>200000) $text=new \WP_Error('structure_large');
@@ -39,7 +44,7 @@ final class PlannedDetails {
                 else $structure=array('title'=>$linked['title'],'text'=>$text);
             }
         } else $structureMessage='Workout-management access is required to view structured prescriptions.';
-        return array('id'=>(int)$id,'title'=>$plan->title?:'Planned swim','date'=>$plan->planned_date,'summary'=>$summary,'instructions'=>(string)$plan->workout_instructions,'match'=>$match,'match_missing'=>!empty($plan->completed_workout_id)&&!$match,'structure'=>$structure,'structure_message'=>$structureMessage);
+        return array('id'=>(int)$id,'title'=>$plan->title?:'Planned swim','date'=>$plan->planned_date,'summary'=>$summary,'editable'=>$editable,'instructions'=>(string)$plan->workout_instructions,'match'=>$match,'match_missing'=>!empty($plan->completed_workout_id)&&!$match,'structure'=>$structure,'structure_message'=>$structureMessage);
     }
     public static function render($detail,$returnUrl=null) {
         if($returnUrl===null) $returnUrl=CalendarView::url(new \DateTimeImmutable($detail['date'],wp_timezone()),'month');

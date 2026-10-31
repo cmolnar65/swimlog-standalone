@@ -116,6 +116,49 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.waitForURL(/view=week/);
       await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Month',exact:true}).tap();
       console.log(`${name}: planned instructions/structure/match, empty/private states, desktop/mobile dialog and matched session navigation passed.`);
+      const today=await page.locator('.calendar-day.is-today time').getAttribute('datetime');
+      assert(await page.locator('.calendar-day.is-today .plan-day-link').count()===1);
+      assert(await page.locator('.calendar-day').evaluateAll((days,today)=>days.every(day=>day.querySelector('time').dateTime>=today||!day.querySelector('.plan-day-link')),today));
+      await page.getByRole('link',{name:'Plan workout',exact:true}).tap();
+      await page.locator('#plan-form-title').waitFor();
+      const originalTitle=`Synthetic ${name} browser plan`;
+      await page.getByLabel('Title',{exact:true}).fill(originalTitle);
+      await page.getByLabel('Planned distance (optional)',{exact:true}).fill('500');
+      await page.getByLabel('Distance unit',{exact:true}).selectOption('yd');
+      await page.getByLabel('Pool length (optional)',{exact:true}).fill('25');
+      await page.getByLabel('Pool course',{exact:true}).selectOption('yd');
+      await page.getByLabel('Workout instructions (optional)',{exact:true}).fill('Synthetic instructions with a quote " and backslash \\');
+      await page.getByLabel('Planned duration (optional)',{exact:true}).fill('10:99');
+      for(const width of [1440,768,390,320]) {
+        await page.setViewportSize({width,height:900});
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: plan form overflow at ${width}`);
+      }
+      await page.getByRole('button',{name:'Save planned workout',exact:true}).tap();
+      await page.getByRole('alert').filter({hasText:'Seconds must be 00'}).waitFor();
+      assert.equal(await page.getByLabel('Title',{exact:true}).inputValue(),originalTitle);
+      await page.getByLabel('Planned duration (optional)',{exact:true}).fill('45:12.345');
+      await page.getByRole('button',{name:'Save planned workout',exact:true}).tap();
+      await page.waitForURL(/saved=1/);
+      await page.getByRole('status').filter({hasText:'Planned workout saved'}).waitFor();
+      await page.getByRole('link',{name:'Edit planned workout',exact:true}).tap();
+      await page.locator('#plan-form-title').waitFor();
+      assert.equal(await page.getByLabel('Planned distance (optional)',{exact:true}).inputValue(),'500');
+      assert.equal(await page.getByLabel('Planned duration (optional)',{exact:true}).inputValue(),'45:12.345');
+      await page.getByLabel('Title',{exact:true}).fill(originalTitle+' edited');
+      await page.getByRole('button',{name:'Save planned workout',exact:true}).tap();
+      await page.waitForURL(/saved=1/);
+      await page.getByRole('heading',{name:originalTitle+' edited',exact:true}).waitFor();
+      await page.getByRole('link',{name:'Back to calendar',exact:true}).tap();
+      await page.locator('a[data-plan-id]').filter({hasText:originalTitle+' edited'}).tap();
+      await page.locator('#workout-dialog .planned-content').waitFor();
+      const edit=page.getByRole('link',{name:'Edit planned workout',exact:true});
+      await edit.tap();await page.locator('#plan-form-title').waitFor();
+      await page.getByLabel('Title',{exact:true}).fill('Unsaved cancellation');
+      await page.getByRole('link',{name:'Cancel',exact:true}).tap();
+      assert((await page.locator('.calendar-panel').innerText()).includes(originalTitle+' edited'));
+      assert(!(await page.locator('.calendar-panel').innerText()).includes('Unsaved cancellation'));
+      console.log(`${name}: create/edit plan, unit/duration round trip, retained invalid input, cancel and responsive form passed.`);
+
       // Reopening, route/no-GPS states, keyboard activation and retry.
       for(const type of ['open_water','running','walking']) {
         await page.locator('a[data-workout-id="'+fixture.workouts[type]+'"]').tap();
@@ -202,7 +245,7 @@ const { chromium, firefox, webkit } = require('playwright');
       console.log(`${name}: workout log filters, all-page totals, pagination, empty state, desktop/mobile layout and tap-off details passed.`);
       await page.getByRole('button', {name:'Log out', exact:true}).click();
       await page.getByText('You have been signed out.', {exact:true}).waitFor();
-      assert.equal(posts[3].origin, 'https://swimlog.example.test');
+      assert.equal(posts.filter(post=>post.path==='?action=logout').slice(-1)[0].origin, 'https://swimlog.example.test');
       console.log(`${name}: automatic login-to-calendar handoff, host-only cookie and logout passed.`);
       // Exercise actual WordPress credentials, failure return, and successful retry.
       await page.getByRole('button', {name:'Sign in with wordpress.example.test', exact:true}).click();

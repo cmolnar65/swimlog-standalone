@@ -2,8 +2,7 @@
 
 Dedicated interface for https://swimlog.cmolnar.com. WordPress at
 `/var/www/cmolnar.com/wp-load.php` remains the identity/session and data authority.
-The calendar and workout log read owner-scoped records through the existing plugin services. No
-Swim Log business records are changed by this interface. No plugin schema,
+The calendar and workout log read owner-scoped records through the existing plugin services. Planned workouts can be created/edited through the existing plugin service. No plugin schema,
 Swim Log source, main-plugin release, SVN or production database copy is involved.
 
 ## Layout
@@ -209,5 +208,37 @@ with same-owner and same-swim-type checks; invalid/foreign links reveal no IDs.
 Notes and raw structured documents are never serialized. The read-only endpoint
 requires a real cookie, own-results capability and a separate session-bound
 `swimlog_planned_detail` nonce; foreign and absent IDs share the same 404.
-No plan status, prescription, match or history is changed. Creation/editing/moving/
+No plan status, prescription, match or history is changed. Creation and editing are now available in the standalone calendar; moving and
 copying remain in WordPress tools for the next implementation phase.
+
+## Create and edit planned workouts
+
+Plan workout is available in the calendar toolbar and on today/future day cards.
+An editable plan's details link to a standalone form that also works without
+JavaScript. The form retains submitted values on validation errors, supports
+meters/yards and exact fractional durations, and uses Post/Redirect/Get after
+success. Calendar date/view are preserved. Past unassociated plans can keep their
+existing date when edited; the plugin rejects newly scheduled past dates.
+
+`PlanEditor` is the write boundary. POST requires HTTPS, the real WordPress cookie,
+own-results and manage-own-workouts capabilities, exact configured Origin, and a
+plan-specific WordPress nonce. IDs are strictly validated and owner-scoped; no
+client owner/status/match/notes/structure IDs or canonical numeric overrides are
+accepted. Form values are unslashed once, scalar/size checked and escaped on output.
+The public pure `Admin_Planned_Workouts::normalize_form` helper and `Admin_UI`
+formatters preserve existing units/duration behavior; `Planned_Workout::save` owns
+validation and every business write. No admin request handlers are invoked.
+
+Existing private notes are supplied server-side and never enter the form. Status,
+recorded matches and structure posts/links are not written. Matched plans and
+recorded-swim/locked prescriptions are read-only in this interface. Unlocked linked
+prescriptions are preserved even when written instructions change, with a visible
+review reminder. A keyed revision detects stale forms (including notes, matches
+and linked document changes) and requires reloading. It is an optimistic check,
+not an atomic lock against simultaneous writes from other WordPress interfaces;
+no transactional/CAS contract is added to the unchanged plugin service.
+
+Synthetic service, HTTP and Chromium/Firefox/WebKit tests exercise creation, editing,
+yard conversion, millisecond precision, invalid-input retention, stale/foreign/
+unauthorized requests, CSRF/Origin failures, existing notes/history/structure
+preservation, responsive forms and cancellation. No production database is used.

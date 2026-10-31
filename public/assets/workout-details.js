@@ -39,11 +39,11 @@
       // HTML is rendered/escaped by our authenticated PHP template; no raw records are serialized.
       content.innerHTML = data.html;
       // Keep a matched session's fallback return link in the originating calendar view.
-      const match=planned?content.querySelector('a[data-matched-workout]'):null;
-      if(match) {
-        const context=new URL(source.href), destination=new URL(match.href);
+      const links=planned?content.querySelectorAll('a[data-matched-workout],a[data-edit-plan]'):[];
+      for(const link of links) {
+        const context=new URL(source.href), destination=new URL(link.href);
         for(const key of ['date','view']) if(context.searchParams.has(key)) destination.searchParams.set(key,context.searchParams.get(key));
-        match.href=destination.pathname+destination.search;
+        link.href=destination.pathname+destination.search;
       }
     } catch (error) {
       if (error.name !== 'AbortError' && current === generation && dialog.open) message('Could not load workout details. Please retry.', true);

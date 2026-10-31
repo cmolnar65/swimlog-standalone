@@ -66,6 +66,7 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/workout-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/log-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/planned-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-editor-integration.php" --path=/tmp/swimlog-wp
           printf '%s\n' "<?php return ['wordpress_load'=>'/tmp/swimlog-wp/wp-load.php','wordpress_origin'=>'https://wordpress.example.test','app_origin'=>'https://swimlog.example.test'];" > /tmp/swimlog-config.php
           mkdir -p /tmp/swimlog-wp/wp-content/mu-plugins
           python3 -c 'import os,pathlib; source=pathlib.Path("companion/loader.php").read_text(); pathlib.Path("/tmp/swimlog-wp/wp-content/mu-plugins/standalone.php").write_text(source.replace("/var/www/swimlog.cmolnar.com/current", os.environ["GITHUB_WORKSPACE"]))'

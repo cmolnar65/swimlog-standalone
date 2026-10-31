@@ -30,7 +30,11 @@ def login_failure(result):
     check(not any(value.startswith(fixture['name'] + '=') for value in headers.get_all('Set-Cookie', [])))
 
 def form_value(body, name):
-    return html.unescape(re.search(r'name="' + name + r'" value="([^"]+)"', body)[1])
+    return html.unescape(re.search(r'name="' + name + r'"[^>]*\bvalue="([^"]*)"', body)[1])
+
+def editor_value(body, name):
+    form = re.search(r'<form class="plan-editor"[^>]*>(.*?)</form>', body, re.S)[1]
+    return form_value(form, name)
 
 app = 'swimlog.example.test'
 main = 'wordpress.example.test'
@@ -132,6 +136,35 @@ check(status == 200 and 'Back to calendar' in fallback and 'date=2028-02-15&view
 check('Synthetic yard prescription' not in request(app, '/?plan='+str(plans['plan']))[2])
 check(request(app, '/?plan='+str(plans['foreign']), cookie=main_cookie)[0] == 404)
 check(request(app, '/?plan='+str(plans['plan'])+'&workout='+str(ids['pool']), cookie=main_cookie)[0] == 400)
+# Real POST creation/editing boundary: no REST writes or owner IDs accepted.
+status, headers, editor = request(app, '/?edit_plan=new&view=week', cookie=main_cookie)
+check(status == 200 and 'no-store' in headers['Cache-Control'] and 'Save planned workout' in editor)
+check(request(app, '/?action=plan_save', cookie=main_cookie)[0] == 405)
+check(request(app, '/?action=plan_save', {}, origin=app_origin)[0] == 401)
+fields = {name:editor_value(editor,name) for name in ['plan_id','nonce','revision','date','view']}
+fields.update({'title':'Synthetic HTTP create','planned_date':editor_value(editor,'planned_date'),'planned_start_time':'07:30','workout_type':'pool','planned_distance':'500','planned_distance_unit':'yd','planned_duration':'20:30.125','pool_length_native':'25','pool_course':'yd','primary_stroke':'FR','workout_instructions':'Synthetic HTTP instructions'})
+check(request(app, '/?action=plan_save', fields, cookie=main_cookie, origin='https://evil.example.test')[0] == 403)
+check(request(app, '/?action=plan_save', {**fields,'nonce':'bad'}, cookie=main_cookie, origin=app_origin)[0] == 403)
+check(request(app, '/?action=plan_save', fields, cookie=main_cookie)[0] == 403)
+status, headers, invalid = request(app, '/?action=plan_save', {**fields,'planned_duration':'10:99'}, cookie=main_cookie, origin=app_origin)
+check(status == 422 and 'Synthetic HTTP create' in invalid and 'Seconds must be 00' in invalid)
+status, headers, invalid = request(app, '/?action=plan_save', {**fields,'user_id':999}, cookie=main_cookie, origin=app_origin)
+check(status == 422 and 'cannot change ownership' in invalid)
+status, headers, created = request(app, '/?action=plan_save', fields, cookie=main_cookie, origin=app_origin)
+check(status == 303 and headers['Location'].startswith(app_origin+'/?') and 'saved=1' in headers['Location'] and 'view=week' in headers['Location'])
+created_id = re.search(r'[?&]plan=(\d+)', headers['Location'])[1]
+status, headers, editor = request(app, '/?edit_plan='+created_id+'&view=week', cookie=main_cookie)
+check(status == 200 and 'Synthetic HTTP create' in editor and editor_value(editor,'planned_distance') == '500' and editor_value(editor,'planned_duration') == '20:30.125')
+edit_fields = {**fields, **{name:editor_value(editor,name) for name in ['plan_id','nonce','revision','date','view']}, 'title':'Synthetic HTTP edited'}
+status, headers, body = request(app, '/?action=plan_save', edit_fields, cookie=main_cookie, origin=app_origin)
+check(status == 303)
+status, headers, stale = request(app, '/?action=plan_save', edit_fields, cookie=main_cookie, origin=app_origin)
+check(status == 409 and 'changed after the form was opened' in stale)
+check(request(app, '/?edit_plan='+str(plans['matched']), cookie=main_cookie)[0] == 409)
+check(request(app, '/?edit_plan='+str(plans['foreign']), cookie=main_cookie)[0] == 404)
+check('Save planned workout' not in request(app, '/?edit_plan=new')[2])
+status, headers, editor = request(app, '/?edit_plan='+str(plans['plan']), cookie=main_cookie)
+check(status == 200 and 'PRIVATE_PLAN_NOTES_CANARY' not in editor)
 status, headers, body = request(app, cookie=main_cookie)
 logout_nonce = form_value(body, 'nonce')
 check(request(app, '/?action=logout', {}, cookie=main_cookie, origin=app_origin)[0] == 403)
