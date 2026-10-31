@@ -39,6 +39,7 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if (in_array($action,array('structured_write','structured_download','structured_asset'),true)||($_GET['screen']??null)==='structures') require dirname(__DIR__).'/app/structured-route.php';
     if ($action === 'event_save') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
         if (!$owner) { http_response_code(401); exit('Sign in again before saving an event.'); }
