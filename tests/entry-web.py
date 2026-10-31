@@ -23,7 +23,9 @@ def request(path='/?screen=manual',data=None,files=None,auth=True,origin='https:
         else:
             boundary='swimlog'+uuid.uuid4().hex;parts=[]
             for k,v in data.items():parts.append(('--'+boundary+'\r\nContent-Disposition: form-data; name="'+k+'"\r\n\r\n'+str(v)+'\r\n').encode())
-            for name,payload in files:parts.append(('--'+boundary+'\r\nContent-Disposition: form-data; name="workout_files[]"; filename="'+name+'"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+payload+b'\r\n')
+            for upload in files:
+                field,name,payload=('workout_files[]',*upload) if len(upload)==2 else upload
+                parts.append(('--'+boundary+'\r\nContent-Disposition: form-data; name="'+field+'"; filename="'+name+'"\r\nContent-Type: application/octet-stream\r\n\r\n').encode()+payload+b'\r\n')
             parts.append(('--'+boundary+'--\r\n').encode());body=b''.join(parts);headers['Content-Type']='multipart/form-data; boundary='+boundary
     try:r=opener.open(urllib.request.Request(base+path,data=body,headers=headers))
     except urllib.error.HTTPError as e:r=e
@@ -75,3 +77,28 @@ for name,compressed in [('compressed.csv.gz',gzip.compress(payload)),('archive.z
     status,headers,_=request('/?action=workout_upload',import_form(),[(name,compressed)]);check(status==303);text=request(follow(headers))[2];check('Source attached' in text or 'already been imported' in text or 'Possible match preserved' in text)
 status,headers,_=request('/?action=workout_upload',import_form(),[('bad.txt',b'unsupported')]);check(status==303 and 'role="alert"' in request(follow(headers))[2])
 print('Workout entry HTTP passed: '+str(count)+' assertions.')
+
+# Workout editor uses genuine multipart media uploads and the existing import/rebuild services.
+import base64
+source_body=request(receipt_url)[2]
+workout_id=re.search(r'href="/\?workout=([0-9]+)',source_body)[1]
+edit_url='/?edit_workout='+workout_id
+def edit_form():
+    status,_,body=request(edit_url);check(status==200)
+    data=values(body,'settings-form workout-edit-form')
+    return {k:v for k,v in data.items()if k in ('workout_id','operation','nonce','revision')}
+png=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')
+data=edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES','make_public':'1'}
+check(request('/?action=workout_write',data,[('workout_photo_0','synthetic.png',png)])[0]==303)
+status,_,body=request(edit_url);check(status==200 and 'SYNTHETIC_EDITOR_NOTES' in body and 'workout-photo-preview' in body)
+check(re.search(r'name="make_public"[^>]*checked',body) is not None)
+photo=re.search(r'<img class="workout-photo-preview" src="([^"]+)',body)[1]
+response=opener.open(urllib.request.Request(base+html.unescape(photo),headers={'Host':'swimlog.example.test','Cookie':cookie}))
+check(response.status==200 and response.headers['Content-Type']=='image/png' and response.read()==png)
+check(request('/?action=workout_write',edit_form()|{'location_id':'0','notes':'bad change'},[('workout_photo_1','bad.svg',b'<svg/>')])[0]==422)
+check('SYNTHETIC_EDITOR_NOTES' in request(edit_url)[2])
+check(request('/?action=workout_write',edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES'},[('workout_photo_0','replacement.png',png)])[0]==303)
+check(request('/?action=workout_write',edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES','delete_photo[]':'0'})[0]==303)
+body=request(edit_url)[2];check('workout-photo-preview' not in body and re.search(r'name="make_public"[^>]*checked',body) is None)
+saved_cookie=cookie;cookie=fixture['name']+'='+fixture['cookie'];check(request(edit_url)[0]==404);cookie=saved_cookie
+print('Workout editor multipart HTTP checks passed.')

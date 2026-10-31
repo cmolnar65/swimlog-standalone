@@ -409,3 +409,32 @@ successful existing plugin connection test; it does not store credentials again.
 Replacing/removing the key or a failed test invalidates verification. The native
 plugin verifier remains authoritative whenever available. Legacy installations
 must verify once in Settings → Garmin Setup before standalone Garmin operations.
+
+### Recorded workout editing
+
+Calendar/log workout details include Edit Workout for owner-managed pool/open-water
+swims. The standalone editor saves location/notes and three photo slots through
+Workout::update_metadata, Workout::set_photos and WordPress media APIs. Recorded
+distance and pool snapshots are not editable through this metadata form. Rebuild
+and confirmed deletion use Importer::rebuild_workout and Workout::delete, including
+the plugin's recalculation and preserved-source rules. Source-less manual workouts
+receive the existing service's no-source explanation on rebuild.
+
+Recorded-swim conversion calls Recorded_Workout_Structure::preview/confirm with
+explicit confirmation and the current source hash. It creates a private
+prescription and optionally schedules it through the plugin. Create Post requires
+edit_posts and creates only an owner-authored draft with the existing workout block;
+editing/publishing that post remains in WordPress. Post/media transport is adapted
+because the equivalent plugin handlers are private or tied to admin redirects.
+No plugin changes or direct writes to workout tables are introduced.
+
+The Make Workout Public checkbox is a saved future preference only, stored as '1'
+in the owner's user metadata under _standalone_workout_public_<workout_id>;
+unchecked means the key is absent. It never changes public results, REST access,
+post status, private land activity rules or any current visibility checks.
+Deletion clears the preference. Before enabling sharing, the plugin must own a
+canonical per-workout visibility service, adopt this preference deliberately, and
+enforce compatible privacy rules in every public renderer/API. The standalone
+repository must then call that service rather than independently granting access.
+Workout photos retain the existing WordPress attachment storage semantics; the
+editor serves previews through authenticated owner-only application requests.
