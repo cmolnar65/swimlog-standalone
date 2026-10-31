@@ -6,7 +6,7 @@ $user=get_user_by('login','synthetic_settings');$owner=(int)$user->ID;wp_set_cur
 $check=static function($v)use(&$checks){++$checks;if(!$v)throw new RuntimeException('Settings assertion '.$checks.' failed.');};
 function settings_input($owner,$op,$screen,$id='new'){return array('operation'=>$op,'nonce'=>wp_create_nonce('standalone_settings_'.$op.'_'.$id),'revision'=>S::revision($owner,$screen,$id));}
 function settings_submit($owner,$input){return S::submit($owner,$input,'https://swimlog.example.test','https://swimlog.example.test');}
-API::remove_key($owner);$check(!S::verified($owner)&&is_wp_error(G::ready($owner,'garmin_activities')));
+$check(S::ready($owner)===true);API::remove_key($owner);$check(!S::verified($owner)&&is_wp_error(G::ready($owner,'garmin_activities')));
 $input=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'1965-01-02','calendar_first_day'=>'monday','training_volume_months'=>'6');
 $post=$_POST;$request=$_REQUEST;$r=settings_submit($owner,$input);$check(isset($r['url'])&&$_POST===$post&&$_REQUEST===$request);$prefs=S::preferences($owner);$check($prefs['birthdate']==='1965-01-02'&&$prefs['calendar_first_day']==='monday'&&$prefs['public_results']==='0');
 $check(is_wp_error(settings_submit($owner,$input)));
