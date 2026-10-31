@@ -14,7 +14,7 @@
   };
   const layout=()=>trees.forEach(position);
   window.addEventListener('resize',layout);
-  if(typeof ResizeObserver==='function')new ResizeObserver(layout).observe(nav);
+  if(typeof ResizeObserver==='function'){const observer=new ResizeObserver(layout);observer.observe(nav);trees.forEach(tree=>observer.observe(tree.querySelector(':scope > .tools-links')));}
   if(document.fonts)document.fonts.ready.then(layout);
   const close=tree=>{tree.open=false;tree.querySelectorAll('details[open]').forEach(child=>{child.open=false;});};
   for(const tree of trees) {

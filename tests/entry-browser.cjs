@@ -18,7 +18,7 @@ const fs=require('node:fs');const assert=require('node:assert/strict');const eng
       };
       await events.locator(':scope > summary').click();assert(await events.evaluate(el=>el.open));await anchored(events);
       await workouts.locator(':scope > summary').click();assert(await workouts.evaluate(el=>el.open));assert(!await events.evaluate(el=>el.open));await anchored(workouts);
-      await page.locator('.structured-submenu>summary').click();assert(await page.locator('.structured-submenu').evaluate(el=>el.open));
+      await page.locator('.structured-submenu>summary').click();assert(await page.locator('.structured-submenu').evaluate(el=>el.open));await anchored(workouts);
       await tools.locator(':scope > summary').click();assert(await tools.evaluate(el=>el.open));await anchored(tools);assert(!await workouts.evaluate(el=>el.open));assert(!await page.locator('.structured-submenu').evaluate(el=>el.open));
       assert.equal(await tools.getByRole('link',{name:'Manage workouts',exact:true}).count(),0);
       assert.equal(await tools.getByRole('link',{name:'Planned workouts',exact:true}).count(),0);
