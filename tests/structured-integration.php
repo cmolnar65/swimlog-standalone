@@ -44,7 +44,7 @@ foreach(array('txt','fit')as$format){$out=SW::download($owner,$id,$format,wp_cre
 structure_check(is_wp_error(SW::download($owner,$id,'txt','bad')));
 structure_check(is_wp_error(structure_submit($owner,structure_input($copy,'delete',$owner))));
 structure_check(isset(structure_submit($owner,structure_input($copy,'delete',$owner)+array('confirm_delete'=>'1'))['url'])&&is_wp_error(Store::get($copy,$owner)));
-$foreign=Store::save($other,'FOREIGN_STRUCTURE_INTEGRATION',$form['document']);structure_check(is_wp_error(SW::item($owner,$foreign)));
+wp_set_current_user($other);$foreign=Store::save($other,'FOREIGN_STRUCTURE_INTEGRATION',$form['document']);structure_check(is_int($foreign));wp_set_current_user($owner);structure_check(is_wp_error(SW::item($owner,$foreign)));
 $user=get_user_by('id',$owner);$user->add_cap('swimlog_manage_own_workouts',false);wp_set_current_user(0);wp_set_current_user($owner);structure_check(is_wp_error(SW::library($owner,array()))&&is_wp_error(SW::download($owner,$id,'txt','bad')));$user->add_cap('swimlog_manage_own_workouts');wp_set_current_user(0);wp_set_current_user($owner);
 $schema=get_option('swimlog_db_version');update_option('swimlog_db_version','0');structure_check(is_wp_error(SW::ready($owner)));update_option('swimlog_db_version',$schema);
 // Remove only the synthetic records created in this test; never a production test path.
