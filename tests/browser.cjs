@@ -19,6 +19,8 @@ const { chromium, firefox, webkit } = require('playwright');
         }
       }
       async function reveal(entry) {
+        // Overflow budgeting runs in a deferred script; do not race its first measure.
+        await page.waitForLoadState('load');
         await entry.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if(await entry.evaluate(el=>!!el.closest('#calendar-day-dialog'))) return;
         await closeDay();
