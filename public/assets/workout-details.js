@@ -54,6 +54,15 @@
     }
     load(source);
   });
+  dialog.addEventListener('keydown', event => {
+    if (event.key !== 'Tab' || event.ctrlKey || event.metaKey || event.altKey) return;
+    const focusable = Array.from(dialog.querySelectorAll('a[href],button,input,select,textarea,[tabindex]'))
+      .filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+    if (!focusable.length) { event.preventDefault(); return; }
+    const index = focusable.indexOf(document.activeElement);
+    if (event.shiftKey && index <= 0) { event.preventDefault(); focusable[focusable.length-1].focus(); }
+    else if (!event.shiftKey && (index < 0 || index === focusable.length-1)) { event.preventDefault(); focusable[0].focus(); }
+  });
   dialog.querySelector('[data-workout-close]').addEventListener('click', close);
   dialog.addEventListener('close', () => { if (!dialog.open) clear(); }); // Includes native Escape/cancel and mobile dismissal.
   const outside = event => { const r=dialog.getBoundingClientRect(); return event.clientX<r.left || event.clientX>r.right || event.clientY<r.top || event.clientY>r.bottom; };
