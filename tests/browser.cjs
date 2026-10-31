@@ -225,9 +225,9 @@ const { chromium, firefox, webkit } = require('playwright');
       console.log(`${name}: move/copy forms, target date navigation, independent plan IDs, cancel and phone widths passed.`);
       // Native HTML drag/drop reschedules through the protected move handler.
       await page.setViewportSize({width:1440,height:1000});
-      const dragDate=new Date(today+'T12:00:00Z');dragDate.setUTCDate(15);
+      const dragDate=new Date(today+'T12:00:00Z');dragDate.setUTCDate(21+['chromium','firefox','webkit'].indexOf(name)*2);
       if(dragDate.toISOString().slice(0,10)<today)dragDate.setUTCMonth(dragDate.getUTCMonth()+1);
-      const from=dragDate.toISOString().slice(0,10);dragDate.setUTCDate(16);const to=dragDate.toISOString().slice(0,10);
+      const from=dragDate.toISOString().slice(0,10);dragDate.setUTCDate(dragDate.getUTCDate()+1);const to=dragDate.toISOString().slice(0,10);
       await closeDay();await page.getByRole('link',{name:'Plan workout',exact:true}).click();
       await page.locator('#plan-form-title').waitFor();
       await page.getByLabel('Title',{exact:true}).fill('Synthetic drag '+name);
