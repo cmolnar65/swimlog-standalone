@@ -1,0 +1,62 @@
+name: Authentication
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: synthetic-only
+          MYSQL_DATABASE: swimlog_test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -psynthetic-only" --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '${{ matrix.php }}'
+          extensions: mysqli, openssl
+          tools: wp-cli
+          coverage: none
+      - name: Lint
+        run: |
+          set -e
+          while IFS= read -r -d '' file; do php -l "$file"; done < <(find app public companion config tests -name '*.php' -print0)
+          bash -n scripts/deploy.sh scripts/install-companion.sh
+      - name: Fresh synthetic WordPress integration
+        env:
+          SWIMLOG_SYNTHETIC_TEST: '1'
+        run: |
+          mkdir /tmp/swimlog-wp
+          wp core download --path=/tmp/swimlog-wp --version=latest
+          wp config create --path=/tmp/swimlog-wp --dbname=swimlog_test --dbuser=root --dbpass=synthetic-only --dbhost=127.0.0.1
+          wp core install --path=/tmp/swimlog-wp --url=https://wordpress.example.test --title=Synthetic --admin_user=synthetic_admin --admin_password=synthetic-only --admin_email=admin@example.test --skip-email
+          wp eval-file "$GITHUB_WORKSPACE/tests/integration.php" --path=/tmp/swimlog-wp
+      - name: HTTP login, callback, home and logout boundaries
+        env:
+          SWIMLOG_SYNTHETIC_TEST: '1'
+          SWIMLOG_TEST_WP: /tmp/swimlog-wp
+          SWIMLOG_CONFIG: /tmp/swimlog-config.php
+          SWIMLOG_WEB_FIXTURE: /tmp/swimlog-web.json
+        run: |
+          wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          printf '%s\n' "<?php return ['wordpress_load'=>'/tmp/swimlog-wp/wp-load.php','wordpress_origin'=>'https://wordpress.example.test','app_origin'=>'https://swimlog.example.test'];" > /tmp/swimlog-config.php
+          mkdir -p /tmp/swimlog-wp/wp-content/mu-plugins
+          printf '%s\n' "<?php require '$GITHUB_WORKSPACE/companion/swimlog-standalone-auth.php';" > /tmp/swimlog-wp/wp-content/mu-plugins/standalone.php
+          php -S 127.0.0.1:8099 tests/router.php > /tmp/swimlog-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server"; rm -f /tmp/swimlog-web.json' EXIT
+          for attempt in {1..20}; do
+            if curl -s -H 'Host: swimlog.example.test' http://127.0.0.1:8099/ > /dev/null; then break; fi
+            sleep 1
+          done
+          python3 tests/web.py
