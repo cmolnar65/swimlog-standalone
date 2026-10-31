@@ -242,3 +242,19 @@ Synthetic service, HTTP and Chromium/Firefox/WebKit tests exercise creation, edi
 yard conversion, millisecond precision, invalid-input retention, stale/foreign/
 unauthorized requests, CSRF/Origin failures, existing notes/history/structure
 preservation, responsive forms and cancellation. No production database is used.
+
+### Older admin helper compatibility
+
+The editor prefers plugin form-formatting helpers when they are callable. Older
+installed builds omit `Admin_UI::native_distance`, `duration_text`, `duration_ms`
+and `Admin_Planned_Workouts::normalize_form`. A small standalone form adapter
+provides equivalent unit entry and exact millisecond formatting/parsing when those
+optional helpers are absent. Canonical business validation and all writes still
+use `Planned_Workout::save`; this does not duplicate persistence or account logic.
+
+CI additionally replaces only the disposable installation's admin helper layer
+with files from the released v1.2 checkpoint, asserts all four methods are absent,
+and repeats editor integration and HTTP checks on every PHP version, plus Chromium
+flows. This tests the legacy helper interface, not the entire application against
+a v1.2 runtime/schema. Caught failures log only exception class, source basename and
+line number; messages, traces, credentials, submitted values and cookies are omitted.

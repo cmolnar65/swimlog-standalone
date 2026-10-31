@@ -8,6 +8,7 @@ $GLOBALS['editor_checks']=0;$GLOBALS['editor_owner']=$owner;
 function editor_check($v){++$GLOBALS['editor_checks'];if(!$v)throw new RuntimeException('Editor assertion '.$GLOBALS['editor_checks'].' failed.');}
 function editor_input($form){return $form['values']+array('plan_id'=>(string)$form['id'],'nonce'=>wp_create_nonce('swimlog_plan_save_'.$form['id']),'revision'=>$form['revision'],'date'=>$form['context']['date'],'view'=>$form['context']['view']);}
 function editor_submit($input){return PE::submit($GLOBALS['editor_owner'],$input,'https://swimlog.example.test','https://swimlog.example.test');}
+$existingForm=PE::open($owner,$ids['plan']);editor_check(!is_wp_error($existingForm)&&$existingForm['values']['planned_duration']==='30:00');
 $form=PE::open($owner,'new',array('view'=>'week'));editor_check(!is_wp_error($form));
 $input=editor_input($form);$input['title']='Synthetic create/edit';$input['planned_distance']='500';$input['planned_distance_unit']='yd';$input['planned_duration']='1:02.345';$input['pool_length_native']='25';$input['pool_course']='yd';$input['workout_instructions']="Keep quotes \"here\" and backslash \\ here";
 $result=editor_submit($input);editor_check(isset($result['id'])&&strpos($result['url'],'view=week')!==false);

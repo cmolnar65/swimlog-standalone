@@ -2,8 +2,6 @@
 namespace SwimlogStandalone;
 
 use SwimLogEvaluation\Planned_Workout;
-use SwimLogEvaluation\Admin_UI;
-use SwimLogEvaluation\Admin_Planned_Workouts;
 use SwimLogEvaluation\Planned_Structure_Link;
 use SwimLogEvaluation\Structured_Workout_Store;
 
@@ -29,7 +27,8 @@ final class PlanEditor {
         if(!self::id($id)) return self::error('Choose a valid planned workout.');
         if(!defined('SWIMLOG_EVALUATION_DIR')||!defined('SWIMLOG_EVALUATION_DB_VERSION')||version_compare((string)get_option('swimlog_db_version','0'),SWIMLOG_EVALUATION_DB_VERSION,'<')) return self::error('The Swim Log installation must be ready before saving planned workouts.',503);
         foreach(array('planned-workout','structured-workout-store','planned-structure-link')as$file) require_once SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';
-        require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-planned-workouts.php';
+        require_once __DIR__.'/PlanFormValues.php';
+        PlanFormValues::load();
         require_once __DIR__.'/CalendarView.php';
         $context=self::context($query);if(is_wp_error($context))return $context;
         $prior=$id==='new'?null:Planned_Workout::get_for_user((int)$id,$owner);
@@ -42,9 +41,9 @@ final class PlanEditor {
         if($prior) {
             foreach(array('title','planned_date','planned_start_time','workout_type','pool_course','primary_stroke','workout_instructions')as$key)$values[$key]=(string)$prior->$key;
             $values['planned_distance_unit']=$prior->pool_course==='yd'?'yd':'m';
-            $values['planned_distance']=Admin_UI::native_distance($prior->planned_distance_m,$values['planned_distance_unit']);
-            $values['pool_length_native']=Admin_UI::native_distance($prior->pool_length_m,$prior->pool_course);
-            $values['planned_duration']=Admin_UI::duration_text($prior->planned_duration_ms);
+            $values['planned_distance']=PlanFormValues::nativeDistance($prior->planned_distance_m,$values['planned_distance_unit']);
+            $values['pool_length_native']=PlanFormValues::nativeDistance($prior->pool_length_m,$prior->pool_course);
+            $values['planned_duration']=PlanFormValues::durationText($prior->planned_duration_ms);
         } elseif(isset($query['planned_date'])) {
             $target=self::context(array('date'=>$query['planned_date']));
             if(is_wp_error($target)||$query['planned_date']<wp_date('Y-m-d'))return self::error('New planned workouts must be scheduled for today or a future date.');
@@ -75,14 +74,14 @@ final class PlanEditor {
         elseif(strlen($v['title'])>191)$form['error']=self::error('The title must be no longer than 191 bytes.',422);
         elseif(!in_array($v['planned_distance_unit'],array('m','yd'),true))$form['error']=self::error('Choose meters or yards for planned distance.',422);
         if($form['error'])return array('form'=>$form);
-        // Public, pure form helper from the plugin: no admin handlers/hooks are invoked.
-        $data=Admin_Planned_Workouts::normalize_form($v);
+        // Prefer plugin form helpers, with a form-only compatibility path for older builds.
+        $data=PlanFormValues::normalize($v);
         if(is_wp_error($data)) { $form['error']=$data;return array('form'=>$form); }
         // Preserve exact canonical distances on unchanged fields (no conversion round-trip).
         if($form['prior']) {
             $p=$form['prior'];$unit=$p->pool_course==='yd'?'yd':'m';
-            if($v['planned_distance_unit']===$unit&&$v['planned_distance']===Admin_UI::native_distance($p->planned_distance_m,$unit))$data['planned_distance_m']=$p->planned_distance_m;
-            if($v['pool_course']===(string)$p->pool_course&&$v['pool_length_native']===Admin_UI::native_distance($p->pool_length_m,$p->pool_course))$data['pool_length_m']=$p->pool_length_m;
+            if($v['planned_distance_unit']===$unit&&$v['planned_distance']===PlanFormValues::nativeDistance($p->planned_distance_m,$unit))$data['planned_distance_m']=$p->planned_distance_m;
+            if($v['pool_course']===(string)$p->pool_course&&$v['pool_length_native']===PlanFormValues::nativeDistance($p->pool_length_m,$p->pool_course))$data['pool_length_m']=$p->pool_length_m;
         }
         $data['notes']=$form['prior']?$form['prior']->notes:''; // Never accept notes from the browser.
         $result=Planned_Workout::save($owner,$data,$id==='new'?0:(int)$id);

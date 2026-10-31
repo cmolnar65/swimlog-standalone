@@ -108,6 +108,6 @@ try {
     http_response_code(isset($action) && $action === 'callback' ? 403 : 503);
     header('Cache-Control: no-store');
     // Never log exception text containing cookie, grant or credentials.
-    error_log('Swimlog standalone: request could not complete.');
+    error_log('Swimlog standalone: '.get_class($error).' at '.basename($error->getFile()).':'.$error->getLine().'.');
     echo 'Swim Log is unavailable or the login request expired. Return to the home page and try again.';
 }
