@@ -10,7 +10,7 @@ const { chromium, firefox, webkit } = require('playwright');
     try {
       const context = await browser.newContext();
       await context.addCookies([{name:fixture.name, value:fixture.cookie, url:'https://wordpress.example.test/', secure:true, httpOnly:true, sameSite:'Lax'}]);
-      const posts = [];
+      const posts = []; const navigation = [];
       await context.route('https://**/*', async route => {
         const request = route.request(); const url = new URL(request.url());
         assert(['swimlog.example.test', 'wordpress.example.test'].includes(url.hostname));
@@ -19,12 +19,17 @@ const { chromium, firefox, webkit } = require('playwright');
         const response = await context.request.fetch('http://127.0.0.1:8099' + url.pathname + url.search, {
           method:request.method(), headers, data:request.postDataBuffer() || undefined, maxRedirects:0
         });
+        if (request.isNavigationRequest()) navigation.push({host:url.host, method:request.method(), status:response.status(), origin:headers.origin || 'absent', cookiePresent:!!headers.cookie});
         await route.fulfill({response});
       });
       const page = await context.newPage();
       await page.goto('https://swimlog.example.test/');
       await page.getByRole('button', {name:'Sign in with cmolnar.com', exact:true}).click();
-      await page.getByRole('button', {name:'Continue to swimlog.cmolnar.com', exact:true}).waitFor({timeout:10000});
+      try { await page.getByRole('button', {name:'Continue to swimlog.cmolnar.com', exact:true}).waitFor({timeout:10000}); } catch (error) {
+        console.error(JSON.stringify(navigation));
+        console.error((await page.locator('body').innerText()).slice(0,300));
+        throw error;
+      }
       assert.equal(posts[0].origin, 'https://swimlog.example.test');
       await page.getByRole('button', {name:'Continue to swimlog.cmolnar.com', exact:true}).click();
       await page.getByRole('button', {name:'Open Swim Log', exact:true}).click();
