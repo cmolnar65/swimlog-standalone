@@ -53,14 +53,12 @@ function swimlog_standalone_auto_post($action, $fields, $script_nonce) {
     echo '<noscript><p>JavaScript is disabled. Continue to finish signing in.</p><button>Continue to Swim Log</button></noscript></form><script nonce="' . esc_attr($script_nonce) . '">document.getElementById("swimlog-handoff").submit();</script></body></html>';
 }
 
-// Affect only login attempts whose return target is this companion's fixed route.
-add_action('wp_login_failed', function ($username, $error = null) {
-    swimlog_standalone_failed_login($error instanceof WP_Error ? $error : new WP_Error('login_failed', 'Login failed.'));
-}, 10, 2);
+// Redirect at the error-presentation stage, after WordPress's authentication and
+// failed-login action chain have completed. Scope to this companion's fixed route.
 add_filter('wp_login_errors', function ($errors, $redirect_to) {
     swimlog_standalone_failed_login($errors);
     return $errors;
-}, 10, 2);
+}, PHP_INT_MAX, 2);
 function swimlog_standalone_failed_login($errors) {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_wp_error($errors) || !$errors->has_errors()) return;
     $target = $_POST['redirect_to'] ?? '';
