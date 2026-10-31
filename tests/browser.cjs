@@ -42,7 +42,8 @@ const { chromium, firefox, webkit } = require('playwright');
       assert(!(await page.locator('body').innerText()).includes('PRIVATE_NOTES_CANARY'));
       for (const width of [1440,768,390,320]) {
         await page.setViewportSize({width,height:900});
-        assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1), `${name}: horizontal overflow at ${width}`);
+        const overflow=await page.evaluate(()=>Array.from(document.querySelectorAll('body *')).filter(el=>el.getBoundingClientRect().right>innerWidth+1).map(el=>({tag:el.tagName,class:el.className,right:Math.round(el.getBoundingClientRect().right)})).slice(0,8));
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1), `${name}: horizontal overflow at ${width}: ${JSON.stringify(overflow)}`);
         const display=await page.locator('.calendar-grid').first().evaluate(el=>getComputedStyle(el).display);
         assert.equal(display,width<=700?'block':'grid');
         const image=page.locator('.brand img');
