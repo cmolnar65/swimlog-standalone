@@ -100,5 +100,5 @@ check('SYNTHETIC_EDITOR_NOTES' in request(edit_url)[2])
 check(request('/?action=workout_write',edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES'},[('workout_photo_0','replacement.png',png)])[0]==303)
 check(request('/?action=workout_write',edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES','delete_photo[]':'0'})[0]==303)
 body=request(edit_url)[2];check('workout-photo-preview' not in body and re.search(r'name="make_public"[^>]*checked',body) is None)
-saved_cookie=cookie;cookie=fixture['name']+'='+fixture['cookie'];check(request(edit_url)[0]==404);cookie=saved_cookie
+saved_cookie=cookie;cookie=fixture['name']+'='+fixture['cookie'];status,_,denied=request(edit_url);check(status in (403,404) and 'SYNTHETIC_EDITOR_NOTES' not in denied);cookie=saved_cookie
 print('Workout editor multipart HTTP checks passed.')
