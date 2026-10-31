@@ -528,8 +528,16 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.getByRole('button',{name:'Unhide workout',exact:true}).click();
       await page.waitForURL(url=>url.searchParams.get('structure_saved')==='unhide');
       await page.getByRole('link',{name:structureTitle+' edited (copy)',exact:true}).click();
-      const downloadPromise=page.waitForEvent('download');await page.getByRole('link',{name:'Download text',exact:true}).click();
-      const download=await downloadPromise;assert(download.suggestedFilename().endsWith('.txt'));
+      const textLink=page.getByRole('link',{name:'Download text',exact:true});
+      if(name==='webkit') {
+        // Verify the authenticated attachment in the browser; native download events
+        // are unreliable for WebKit through this disposable self-signed TLS proxy.
+        const attachment=await textLink.evaluate(async el=>{const r=await fetch(el.href,{credentials:'same-origin',cache:'no-store'});return {status:r.status,type:r.headers.get('Content-Type'),disposition:r.headers.get('Content-Disposition'),body:await r.text()};});
+        assert.equal(attachment.status,200);assert(attachment.type.includes('text/plain'));assert(attachment.disposition.includes('attachment;'));assert(attachment.body.includes(structureTitle+' edited (copy)'));
+      } else {
+        const downloadPromise=page.waitForEvent('download');await textLink.click();
+        const download=await downloadPromise;assert(download.suggestedFilename().endsWith('.txt'));
+      }
       await page.getByText('Delete unused workout',{exact:true}).click();
       await page.getByLabel('Confirm permanent deletion',{exact:true}).check();
       await page.getByRole('button',{name:'Delete permanently',exact:true}).click();
