@@ -15,10 +15,11 @@ const { chromium, firefox, webkit } = require('playwright');
       async function closeDay() {
         if(await page.locator('#calendar-day-dialog[open]').count()) {
           await page.locator('[data-day-close]').click();
-          await page.waitForFunction(()=>!document.getElementById('calendar-day-dialog').open);
+          await page.waitForFunction(()=>!document.getElementById('calendar-day-dialog').open&&!document.querySelector('[data-day-items]').childElementCount);
         }
       }
       async function reveal(entry) {
+        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if(await entry.evaluate(el=>!!el.closest('#calendar-day-dialog'))) return;
         await closeDay();
         if(!await entry.isVisible()) {
@@ -505,4 +506,4 @@ const { chromium, firefox, webkit } = require('playwright');
       await context.close();
     } finally { await browser.close(); }
   }
-})().catch(error => { console.error(error.message); process.exitCode=1; });
+})().catch(error => { console.error(error.stack); process.exitCode=1; });
