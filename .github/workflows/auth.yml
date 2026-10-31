@@ -63,6 +63,15 @@ jobs:
           if [ '${{ matrix.php }}' = '8.3' ]; then
             npm install --no-save --no-package-lock playwright@1.62.1
             npx playwright install --with-deps chromium firefox webkit
+            echo '127.0.0.1 wordpress.example.test swimlog.example.test' | sudo tee -a /etc/hosts > /dev/null
+            openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=example.test' -addext 'subjectAltName=DNS:wordpress.example.test,DNS:swimlog.example.test' -keyout /tmp/swimlog-key.pem -out /tmp/swimlog-cert.pem > /dev/null 2>&1
+            sudo -E python3 tests/tls-proxy.py > /tmp/swimlog-tls.log 2>&1 &
+            tls=$!
+            trap 'kill "$server"; sudo kill "$tls" || true; rm -f /tmp/swimlog-web.json /tmp/swimlog-key.pem /tmp/swimlog-cert.pem' EXIT
+            for attempt in {1..20}; do
+              if curl --noproxy '*' -ks https://swimlog.example.test/ > /dev/null; then break; fi
+              sleep 1
+            done
             for browser in chromium firefox webkit; do
               wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
               SWIMLOG_BROWSER="$browser" node tests/browser.cjs

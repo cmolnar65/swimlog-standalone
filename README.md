@@ -81,5 +81,6 @@ Authentication pages use `strict-origin-when-cross-origin`: `no-referrer` can tu
 real form POST Origin headers into `null`. Exact-origin checks still reject absent,
 null and foreign origins. The app CSP allows the fixed WordPress origin for the
 login redirect. Chromium, Firefox and WebKit exercise actual form submissions in
-the disposable environment using intercepted HTTPS origins and local WordPress
-HTTP transport; this tests browser header/CSP behavior, not production TLS/proxies.
+the disposable environment using real local HTTPS hosts with an ephemeral test
+certificate and a local WordPress backend. This tests browser header/CSP/redirect
+behavior; production certificates, proxies and site plugins still need acceptance.
