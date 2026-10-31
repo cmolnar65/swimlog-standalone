@@ -74,3 +74,12 @@ Live acceptance remains required: existing/new WordPress login; confirmation; ho
 name escaping; no-capability account; session expiry; logout from each host; replay;
 HTTPS; host-only cookie flags/path; installed login/security/cache plugins; physical
 mobile devices. Automated integration success is not live-site acceptance.
+
+### Browser-origin regression
+
+Authentication pages use `strict-origin-when-cross-origin`: `no-referrer` can turn
+real form POST Origin headers into `null`. Exact-origin checks still reject absent,
+null and foreign origins. The app CSP allows the fixed WordPress origin for the
+login redirect. Chromium, Firefox and WebKit exercise actual form submissions in
+the disposable environment using intercepted HTTPS origins and local WordPress
+HTTP transport; this tests browser header/CSP behavior, not production TLS/proxies.

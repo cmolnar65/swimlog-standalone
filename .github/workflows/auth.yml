@@ -60,3 +60,11 @@ jobs:
             sleep 1
           done
           python3 tests/web.py
+          if [ '${{ matrix.php }}' = '8.3' ]; then
+            npm install --no-save --no-package-lock playwright@1.62.1
+            npx playwright install --with-deps chromium firefox webkit
+            for browser in chromium firefox webkit; do
+              wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+              SWIMLOG_BROWSER="$browser" node tests/browser.cjs
+            done
+          fi

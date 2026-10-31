@@ -3,7 +3,7 @@ use SwimlogStandalone\Auth;
 try {
     $config = require dirname(__DIR__) . '/app/bootstrap.php';
     Auth::headers();
-    header("Content-Security-Policy: default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+    header("Content-Security-Policy: default-src 'none'; style-src 'self'; form-action 'self' " . $config['wordpress_origin'] . "; frame-ancestors 'none'; base-uri 'none'");
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ($host !== parse_url($config['app_origin'], PHP_URL_HOST)) { http_response_code(400); exit('Invalid host.'); }
     if (!is_ssl()) {

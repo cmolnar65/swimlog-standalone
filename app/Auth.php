@@ -73,7 +73,7 @@ final class Auth {
     public static function headers() {
         header('Cache-Control: private, no-store, max-age=0');
         header('Pragma: no-cache');
-        header('Referrer-Policy: no-referrer');
+        header('Referrer-Policy: strict-origin-when-cross-origin');
         header('X-Content-Type-Options: nosniff');
         header('X-Frame-Options: DENY');
     }
