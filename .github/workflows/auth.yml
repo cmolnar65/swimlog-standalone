@@ -144,6 +144,15 @@ jobs:
           fi
           # Simulate an installed Garmin API without the newer verification helper/constant.
           python3 -c 'import pathlib; p=pathlib.Path("/tmp/swimlog-wp/wp-content/plugins/swimlog-core/includes/class-garmin-personal-api.php"); p.write_text(p.read_text().replace("connection_ready", "legacy_connection_ready").replace("TESTED_KEY", "LEGACY_TESTED_KEY"))'
+          # Discard the HTTP process's cached class after replacing the installed API.
+          kill "$server"
+          wait "$server" || true
+          php -S 127.0.0.1:8099 tests/router.php > /tmp/swimlog-http.log 2>&1 &
+          server=$!
+          for attempt in {1..20}; do
+            if curl -s -H 'Host: swimlog.example.test' http://127.0.0.1:8099/ > /dev/null; then break; fi
+            sleep 1
+          done
           wp eval-file "$GITHUB_WORKSPACE/tests/settings-legacy.php" --path=/tmp/swimlog-wp
           python3 tests/settings-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then

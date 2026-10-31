@@ -29,7 +29,7 @@ final class Settings {
         delete_user_meta($owner,self::VERIFIED_KEY);
         $stored=(string)get_user_meta($owner,API::META_KEY,true);
         $result=API::test_connection($owner);
-        if(is_wp_error($result)||$result!==true)return $result;
+        if(is_wp_error($result))return $result;if($result!==true)return self::error('The plugin could not confirm a successful connection test.',503);
         if($stored===''||!hash_equals($stored,(string)get_user_meta($owner,API::META_KEY,true)))return self::error('The saved key changed during verification. Verify the current key again.',409);
         if(!is_callable(array(API::class,'connection_ready')))update_user_meta($owner,self::VERIFIED_KEY,self::credentialMarker($owner,$stored));
         return self::verified($owner)?true:self::error('Verification could not be confirmed. Test the connection again.',503);
