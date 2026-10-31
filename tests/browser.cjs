@@ -19,7 +19,7 @@ const { chromium, firefox, webkit } = require('playwright');
         }
       }
       async function reveal(entry) {
-        await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+        await entry.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
         if(await entry.evaluate(el=>!!el.closest('#calendar-day-dialog'))) return;
         await closeDay();
         if(!await entry.isVisible()) {
