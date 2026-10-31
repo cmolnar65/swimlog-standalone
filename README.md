@@ -181,3 +181,12 @@ than showing a partial total. This avoids an unbounded aggregation on every page
 without introducing table queries or duplicated calculations. Synthetic integration
 and browser checks cover pagination, filter boundaries, ownership/capability denial,
 unknown/zero/yard distances, all-page totals, empty/error states and mobile details.
+
+Pool details also show total identified rest and calculated moving time (elapsed
+minus rest). Positive, complete rest-lap timing takes precedence; otherwise complete
+rest-length timing is used. Overlapping lap/length representations are never summed.
+The caption identifies the chosen source and notes that unrecorded pauses can remain.
+Missing/invalid rest durations, absent elapsed time or rest exceeding elapsed leave
+the calculation unavailable. Device-recorded moving time is displayed separately.
+This display calculation does not alter stored times, analytics or performances and
+is not applied to land/open-water activities.

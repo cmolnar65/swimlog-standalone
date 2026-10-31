@@ -52,6 +52,8 @@ const { chromium, firefox, webkit } = require('playwright');
         await page.locator('#workout-dialog .workout-content').waitFor();
         assert(await page.locator('#workout-dialog').evaluate(el=>el.open));
         assert((await page.locator('#workout-dialog').innerText()).includes('Lengths and rest'));
+        assert.equal(await page.locator('#workout-dialog .workout-metrics>div').filter({has:page.locator('dt',{hasText:/^Total rest time$/})}).locator('dd').innerText(),'45.00');
+        assert.equal(await page.locator('#workout-dialog .workout-metrics>div').filter({has:page.locator('dt',{hasText:/^Calculated moving time$/})}).locator('dd').innerText(),'29:15.00');
         const restLap=page.getByRole('region',{name:'Workout laps',exact:true}).locator('tbody tr').last();
         assert.equal(await restLap.locator('td').last().innerText(),'Rest');
         assert((await restLap.innerText()).includes('45.00'));

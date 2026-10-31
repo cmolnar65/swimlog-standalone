@@ -9,6 +9,8 @@ function detail_check($value) { ++$GLOBALS['detail_checks']; if(!$value)throw ne
 $pool=WD::load($owner,$ids['pool']); detail_check(!is_wp_error($pool));
 detail_check(count($pool['laps'])===5 && count($pool['lengths'])===81);
 detail_check($pool['summary']['Average SWOLF']==='35.00' && $pool['summary']['Recorded moving time']==='—');
+detail_check($pool['summary']['Total rest time']==='45.00' && $pool['summary']['Calculated moving time']==='29:15.00');
+detail_check($pool['timing']['rest_ms']===45000 && $pool['timing']['moving_ms']===1755000);
 $html=WD::render($pool);
 detail_check(strpos($html,'Lengths and rest')!==false && strpos($html,'Breaststroke')!==false && strpos($html,'★ Personal best')!==false);
 detail_check(strpos($html,'<img src=x')===false && strpos($html,'&lt;img')!==false);
@@ -35,8 +37,37 @@ preg_match('/<tr><td>997<\/td>(.*?)<\/tr>/s',$lapHtml,$swimLap);
 detail_check(strpos($restLap[1],'<td>Rest</td>')!==false && strpos($restLap[1],'Freestyle')===false);
 detail_check(strpos($restLap[1],'45.00')!==false && strpos($swimLap[1],'Freestyle')!==false);
 detail_check(serialize($lapDetail['laps'])===$lapBefore);
+// Rest can be duplicated between lap/length tables. Never sum both levels.
+$rest=(object)array('distance_m'=>0,'elapsed_time_ms'=>45000,'stroke'=>'FR');
+$lengthRest=(object)array('length_type'=>'rest','distance_m'=>0,'elapsed_time_ms'=>45000);
+$active=(object)array('distance_m'=>25,'elapsed_time_ms'=>20000);
+$rowsBefore=serialize(array($rest,$lengthRest));
+$timing=WD::poolTiming(180000,array($active,$rest),array($active,$lengthRest));
+detail_check($timing['rest_ms']===45000&&$timing['moving_ms']===135000&&strpos($timing['note'],'laps only')!==false);
+$timing=WD::poolTiming(180000,array($active),array($active,$lengthRest,$lengthRest));
+detail_check($timing['rest_ms']===90000&&$timing['moving_ms']===90000&&strpos($timing['note'],'lengths only')!==false);
+detail_check(serialize(array($rest,$lengthRest))===$rowsBefore);
+$missing=(object)array('length_type'=>'rest','elapsed_time_ms'=>null);
+$timing=WD::poolTiming(180000,array(),array($lengthRest,$missing));
+detail_check($timing['rest_ms']===null&&$timing['moving_ms']===null&&strpos($timing['note'],'missing')!==false);
+$timing=WD::poolTiming(30000,array($rest),array());
+detail_check($timing['rest_ms']===45000&&$timing['moving_ms']===null&&strpos($timing['note'],'exceeds')!==false);
+detail_check(WD::poolTiming(null,array($rest),array())['moving_ms']===null);
+detail_check(WD::poolTiming(45000,array($rest),array())['moving_ms']===0);
+detail_check(WD::poolTiming(180000,array($active),array())['rest_ms']===null);
+detail_check(WD::poolTiming(180000,array(),array((object)array('length_type'=>'rest','elapsed_time_ms'=>0)))['moving_ms']===180000);
+detail_check(WD::poolTiming(180000,array(),array((object)array('length_type'=>'rest','elapsed_time_ms'=>-1)))['rest_ms']===null);
+// A complete length source can substitute for unusable lap timing.
+detail_check(WD::poolTiming(180000,array($missing),array($lengthRest))['moving_ms']===135000);
+// An existing device moving time remains recorded, alongside the independent estimate.
+\SwimLogEvaluation\Database::write('update',\SwimLogEvaluation\Database::table('workouts'),array('moving_time_ms'=>1700000),array('id'=>$ids['pool']));
+$recorded=WD::load($owner,$ids['pool']);
+detail_check($recorded['summary']['Recorded moving time']==='28:20.00'&&$recorded['summary']['Calculated moving time']==='29:15.00');
+detail_check((int)\SwimLogEvaluation\Workout::get_for_user($ids['pool'],$owner)->moving_time_ms===1700000);
+\SwimLogEvaluation\Database::write('update',\SwimLogEvaluation\Database::table('workouts'),array('moving_time_ms'=>null),array('id'=>$ids['pool']));
 $run=WD::load($owner,$ids['running']); detail_check(!is_wp_error($run) && $run['summary']['Environment']==='Unknown');
 detail_check(substr_count($run['route'],'<polyline')===2);
+detail_check($run['timing']===null&&!isset($run['summary']['Calculated moving time']));
 detail_check(strpos($run['route'],'style=')===false && strpos($run['route'],'10.001')===false);
 detail_check(strpos(WD::render($run),'SWOLF')===false && strpos(WD::render($run),'Lengths and rest')===false);
 $walk=WD::load($owner,$ids['walking']); detail_check($walk['summary']['Distance']==='Distance unavailable' && $walk['route']==='');
