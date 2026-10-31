@@ -45,6 +45,12 @@ final class WorkoutDetails {
         }
         return array('id'=>(int)$id,'type'=>$type,'label'=>$labels[$type],'summary'=>$summary,'laps'=>$laps,'lengths'=>$lengths,'route'=>$route,'performances'=>$type==='pool'?Workout::performances((int)$id,$owner):array(),'analytics'=>$type==='open_water'?Workout::open_water_analytics((int)$id,$owner):array());
     }
+    /** Presentation only: recorded timed zero-distance rows are rests, not swims. */
+    public static function isRestLength($length) {
+        return strtolower((string)($length->length_type??''))==='rest'
+            || (isset($length->distance_m) && is_numeric($length->distance_m) && (float)$length->distance_m===0.0
+                && isset($length->elapsed_time_ms) && is_numeric($length->elapsed_time_ms) && (float)$length->elapsed_time_ms>0);
+    }
     public static function stroke($value) {
         return array('FR'=>'Freestyle','BR'=>'Breaststroke','BACK'=>'Backstroke','BK'=>'Backstroke','FLY'=>'Butterfly','BU'=>'Butterfly','MIXED'=>'Mixed','MX'=>'Mixed','IM'=>'Individual medley')[$value??'']??($value?:'—');
     }
