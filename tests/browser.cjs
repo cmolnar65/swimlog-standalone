@@ -199,6 +199,54 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.waitForURL(url=>url.searchParams.get('date')===today);
       await page.locator('#calendar-title').waitFor();
       console.log(`${name}: move/copy forms, target date navigation, independent plan IDs, cancel and phone widths passed.`);
+      // Native HTML drag/drop reschedules through the protected move handler.
+      await page.setViewportSize({width:1440,height:1000});
+      const dragDate=new Date(today+'T12:00:00Z');dragDate.setUTCDate(15);
+      if(dragDate.toISOString().slice(0,10)<today)dragDate.setUTCMonth(dragDate.getUTCMonth()+1);
+      const from=dragDate.toISOString().slice(0,10);dragDate.setUTCDate(16);const to=dragDate.toISOString().slice(0,10);
+      await page.getByRole('link',{name:'Plan workout',exact:true}).click();
+      await page.locator('#plan-form-title').waitFor();
+      await page.getByLabel('Title',{exact:true}).fill('Synthetic drag '+name);
+      await page.getByLabel('Planned date',{exact:true}).fill(from);
+      await page.getByRole('button',{name:'Save planned workout',exact:true}).click();
+      await page.waitForURL(/saved=1/);const dragId=new URL(page.url()).searchParams.get('plan');
+      await page.getByRole('link',{name:'Back to calendar',exact:true}).click();
+      await page.locator('#calendar-title').waitFor();
+      await page.getByLabel('Go to date',{exact:true}).fill(from);
+      await page.getByRole('button',{name:'Go',exact:true}).click();
+      await page.waitForURL(url=>url.searchParams.get('date')===from);
+      let draggable=page.locator('a[data-plan-id="'+dragId+'"]').first();
+      assert.equal(await draggable.getAttribute('draggable'),'true');
+      assert.equal(await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').count() ? await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').getAttribute('draggable') : 'false','false');
+      await draggable.dragTo(page.locator('.calendar-day[data-date="'+to+'"]'));
+      await page.waitForURL(url=>url.searchParams.get('date')===to&&url.searchParams.get('plan_result')==='moved');
+      assert.equal(new URL(page.url()).searchParams.has('plan'),false);
+      assert.equal(await page.locator('.calendar-day[data-date="'+to+'"] a[data-plan-id="'+dragId+'"]').count(),1);
+      assert.equal(await page.locator('#workout-dialog').evaluate(el=>el.open),false);
+      await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Week',exact:true}).click();
+      await page.waitForURL(/view=week/);
+      const weekDays=await page.locator('.calendar-day').evaluateAll(days=>days.map(day=>day.dataset.date));
+      const weekTarget=weekDays.find(date=>date>=today&&date!==to);
+      draggable=page.locator('a[data-plan-id="'+dragId+'"]').first();
+      const blocked=url=>url.searchParams.get('action')==='plan_drag_context'&&url.searchParams.get('id')===dragId;
+      await page.route(blocked,route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic move preparation failed'})}));
+      const beforeFailure=page.url();
+      await draggable.dragTo(page.locator('.calendar-day[data-date="'+weekTarget+'"]'));
+      await page.locator('[data-plan-drag-status]').filter({hasText:'Synthetic move preparation failed'}).waitFor();
+      assert.equal(page.url(),beforeFailure);
+      assert.equal(await page.locator('.calendar-day[data-date="'+to+'"] a[data-plan-id="'+dragId+'"]').count(),1);
+      await page.unroute(blocked);
+      await draggable.dragTo(page.locator('.calendar-day[data-date="'+weekTarget+'"]'));
+      await page.waitForURL(url=>url.searchParams.get('date')===weekTarget&&url.searchParams.get('view')==='week'&&url.searchParams.get('plan_result')==='moved');
+      assert.equal(await page.locator('.calendar-day[data-date="'+weekTarget+'"] a[data-plan-id="'+dragId+'"]').count(),1);
+      await page.setViewportSize({width:320,height:900});
+      await page.waitForFunction(()=>Array.from(document.querySelectorAll('a[data-plan-drag]')).every(el=>!el.draggable));
+      await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Month',exact:true}).tap();
+      await page.waitForURL(/view=month/);
+      await page.getByRole('link',{name:'Today',exact:true}).tap();
+      await page.waitForURL(url=>url.searchParams.get('date')===today);
+      console.log(`${name}: native month/week drag/drop, failed preparation without writes, matched restrictions and phone fallback passed.`);
+
 
 
       // Reopening, route/no-GPS states, keyboard activation and retry.

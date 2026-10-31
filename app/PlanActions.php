@@ -37,7 +37,8 @@ final class PlanActions {
         if(is_wp_error($form))return $form;
         if(is_string($input['target_date']??null)&&strlen($input['target_date'])<=32)$form['target_date']=$input['target_date'];
         else $form['error']=self::error('Choose a valid target date.',422);
-        if(array_diff(array_keys($input),array('plan_id','operation','nonce','revision','target_date','date','view')))$form['error']=self::error('This form can only move or copy the selected plan.',422);
+        if(array_diff(array_keys($input),array('plan_id','operation','nonce','revision','target_date','date','view','return_to')))$form['error']=self::error('This form can only move or copy the selected plan.',422);
+        if(isset($input['return_to'])&&$input['return_to']!=='calendar')$form['error']=self::error('Choose a valid return destination.',422);
         if(!is_string($input['revision']??null)||!hash_equals($form['revision'],$input['revision'])) {
             $form['revision']=is_string($input['revision']??null)?$input['revision']:'';
             $form['error']=self::error('This plan changed after the form was opened. Reload it to review the latest version.',409);
@@ -50,6 +51,7 @@ final class PlanActions {
         $result=$operation==='move'?Planned_Workout::move((int)$id,$owner,$form['target_date']):Planned_Workout::duplicate((int)$id,$owner,$form['target_date']);
         if(is_wp_error($result)) { $form['error']=$result;return array('form'=>$form); }
         $url='/?'.http_build_query(array('date'=>$form['target_date'],'view'=>$form['context']['view'],'plan'=>(int)$result,'plan_result'=>$operation==='move'?'moved':'copied'));
+        if(($input['return_to']??'')==='calendar')$url=remove_query_arg('plan',$url);
         return array('id'=>(int)$result,'url'=>$url);
     }
 }

@@ -174,6 +174,22 @@ def transfer_value(body, name):
 move_fields = {name:transfer_value(transfer,name) for name in ['plan_id','operation','nonce','revision','date','view','target_date']}
 from datetime import date, timedelta
 future = (date.fromisoformat(move_fields['target_date'])+timedelta(days=7)).isoformat()
+drag_nonce = re.search(r'data-drag-nonce="([^\"]+)"', request(app, cookie=main_cookie)[2])[1]
+drag_extra = {'X-Swimlog-Nonce':drag_nonce}
+context_path = '/?action=plan_drag_context&id='+created_id+'&view=week'
+status, headers, drag_context = request(app, context_path, cookie=main_cookie, extra=drag_extra)
+check(status == 200 and 'no-store' in headers['Cache-Control'])
+context = json.loads(drag_context)
+check(context['operation'] == 'move' and str(context['plan_id']) == created_id and set(context) == {'plan_id','operation','nonce','revision','date','view'})
+check(request(app, context_path, extra=drag_extra)[0] == 401)
+check(request(app, context_path, cookie=main_cookie)[0] == 403)
+check(request(app, context_path, cookie=main_cookie, extra=extra)[0] == 403)
+check(request(app, context_path, {}, cookie=main_cookie, extra=drag_extra)[0] == 405)
+foreign_drag = request(app, '/?action=plan_drag_context&id='+str(plans['foreign']), cookie=main_cookie, extra=drag_extra)
+missing_drag = request(app, '/?action=plan_drag_context&id=99999999', cookie=main_cookie, extra=drag_extra)
+check(foreign_drag[0] == missing_drag[0] == 404 and foreign_drag[2] == missing_drag[2])
+check(request(app, '/?action=plan_drag_context&id='+str(plans['matched']), cookie=main_cookie, extra=drag_extra)[0] == 409)
+move_fields = {**context, 'target_date':future, 'return_to':'calendar'}
 move_fields['target_date'] = future
 check(request(app, '/?action=plan_transfer', cookie=main_cookie)[0] == 405)
 check(request(app, '/?action=plan_transfer', move_fields, origin=app_origin)[0] == 401)
@@ -183,7 +199,7 @@ status, headers, invalid = request(app, '/?action=plan_transfer', {**move_fields
 check(status == 422 and '1900-01-01' in invalid and 'Choose today or a future date' in invalid)
 check(request(app, '/?action=plan_transfer', {**move_fields,'user_id':'99'}, cookie=main_cookie, origin=app_origin)[0] == 422)
 status, headers, body = request(app, '/?action=plan_transfer', move_fields, cookie=main_cookie, origin=app_origin)
-check(status == 303 and 'plan_result=moved' in headers['Location'] and 'date='+future in headers['Location'] and 'view=week' in headers['Location'])
+check(status == 303 and re.search(r'[?&]plan=',headers['Location']) is None and 'plan_result=moved' in headers['Location'] and 'date='+future in headers['Location'] and 'view=week' in headers['Location'])
 check(request(app, '/?action=plan_transfer', move_fields, cookie=main_cookie, origin=app_origin)[0] == 409)
 check(request(app, '/?plan_action=move&source_plan='+str(plans['matched']), cookie=main_cookie)[0] == 409)
 check(request(app, '/?plan_action=copy&source_plan='+str(plans['foreign']), cookie=main_cookie)[0] == 404)

@@ -283,3 +283,21 @@ Synthetic integration, HTTP and browser coverage includes moved IDs/dates, copie
 structure independence, original notes/matches/lock preservation, invalid documents
 without orphan plans, stale/foreign/CSRF rejection, target navigation and cancellation.
 The legacy-admin-helper compatibility run also exercises these operations.
+
+## Desktop calendar drag/drop
+
+On desktop-width calendars, unmatched planned cards support native HTML drag/drop
+onto a different day that is today or later, in month and week views. A highlighted
+day shows a valid target. Recorded sessions and matched/cancelled/skipped plans
+are not draggable. Locked plans fail the server preflight without changing data.
+Touch-width calendars retain normal scrolling and Move/Copy date-selection forms.
+
+Drag start performs a private, cookie/capability/nonce-protected read preflight
+through `PlanActions::open`. Only a move nonce, opaque revision and calendar context
+are returned; no notes/documents are serialized. Drop submits a native same-origin
+POST to the existing `plan_transfer` handler. Ownership, lock/status, CSRF, Origin,
+staleness and target-date validation are checked again before the plugin move.
+The fixed `return_to=calendar` flag returns to the target day/view; no arbitrary
+return URLs are accepted. Cancelled/rejected drags do not write, and preparation
+failures remain visible without automatic retries. Existing detail links remain
+usable without JavaScript; native anchor dragging is disabled until enhanced.

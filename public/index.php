@@ -39,6 +39,15 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if ($action === 'plan_drag_context') {
+        if (!in_array($method,array('GET','HEAD'),true)) { header('Allow: GET, HEAD'); wp_send_json(array('error'=>'Read-only endpoint.'),405); }
+        if (!$owner) wp_send_json(array('error'=>'Sign in again before moving a plan.'),401);
+        if (!Auth::requireCapability($owner)||!current_user_can('swimlog_manage_own_workouts')||!wp_verify_nonce((string)($_SERVER['HTTP_X_SWIMLOG_NONCE']??''),'swimlog_plan_drag')) wp_send_json(array('error'=>'Refresh the calendar before moving a plan.'),403);
+        require_once dirname(__DIR__).'/app/PlanActions.php';
+        $form=\SwimlogStandalone\PlanActions::open($owner,$_GET['id']??null,'move',$_GET);
+        if (is_wp_error($form)) wp_send_json(array('error'=>$form->get_error_message()),(int)($form->get_error_data()['status']??400));
+        wp_send_json(array('plan_id'=>$form['id'],'operation'=>'move','nonce'=>wp_create_nonce('swimlog_plan_move_'.$form['id']),'revision'=>$form['revision'],'date'=>$form['context']['date'],'view'=>$form['context']['view']),200);
+    }
     if ($action === 'plan_transfer') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
         if (!$owner) { http_response_code(401); exit('Sign in again before moving or copying a plan.'); }
