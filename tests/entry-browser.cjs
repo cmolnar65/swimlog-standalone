@@ -5,13 +5,25 @@ const fs=require('node:fs');const assert=require('node:assert/strict');const eng
     const context=await browser.newContext({ignoreHTTPSErrors:true,hasTouch:true,proxy:{server:'http://127.0.0.1:8088'}});
     await context.addCookies([{name:fixture.name,value:fixture.entry_cookie,url:'https://wordpress.example.test/',secure:true,httpOnly:true,sameSite:'Lax'}]);
     const page=await context.newPage();await page.goto('https://swimlog.example.test/');await page.getByRole('button',{name:'Sign in with wordpress.example.test',exact:true}).click();await page.locator('#calendar-title').waitFor();
-    for(const width of [1440,768,390,320]) {
+    for(const width of [1440,1024,768,390,320]) {
       await page.setViewportSize({width,height:900});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
       const events=page.locator('.events-menu'),workouts=page.locator('.workouts-menu'),tools=page.locator('.tools-menu:not(.events-menu):not(.workouts-menu)');
-      await events.locator(':scope > summary').click();assert(await events.evaluate(el=>el.open));
-      await workouts.locator(':scope > summary').click();assert(await workouts.evaluate(el=>el.open));assert(!await events.evaluate(el=>el.open));
+      const anchored=async tree=>{
+        await page.waitForFunction(()=>Array.from(document.querySelectorAll('.top-nav > details[open]')).every(tree=>{
+          const panel=tree.querySelector(':scope > .tools-links').getBoundingClientRect(),button=tree.querySelector(':scope > summary').getBoundingClientRect(),nav=document.querySelector('.top-nav').getBoundingClientRect();
+          if(innerWidth<=700)return panel.right<=innerWidth+1;
+          const expected=Math.max(12,Math.min(button.left,innerWidth-12-panel.width));
+          return Math.abs(panel.left-expected)<=2&&panel.top>=nav.bottom&&panel.right<=innerWidth-10;
+        }));
+      };
+      await events.locator(':scope > summary').click();assert(await events.evaluate(el=>el.open));await anchored(events);
+      await workouts.locator(':scope > summary').click();assert(await workouts.evaluate(el=>el.open));assert(!await events.evaluate(el=>el.open));await anchored(workouts);
       await page.locator('.structured-submenu>summary').click();assert(await page.locator('.structured-submenu').evaluate(el=>el.open));
-      await tools.locator(':scope > summary').click();assert(await tools.evaluate(el=>el.open));assert(!await workouts.evaluate(el=>el.open));assert(!await page.locator('.structured-submenu').evaluate(el=>el.open));
+      await tools.locator(':scope > summary').click();assert(await tools.evaluate(el=>el.open));await anchored(tools);assert(!await workouts.evaluate(el=>el.open));assert(!await page.locator('.structured-submenu').evaluate(el=>el.open));
+      assert.equal(await tools.getByRole('link',{name:'Manage workouts',exact:true}).count(),0);
+      assert.equal(await tools.getByRole('link',{name:'Planned workouts',exact:true}).count(),0);
+      assert.equal(await tools.getByRole('link',{name:'Structured workouts',exact:true}).count(),0);
+      assert.equal(await tools.getByRole('link',{name:'Personal bests',exact:true}).count(),1);
       await tools.locator(':scope > summary').focus();await page.keyboard.press('Escape');assert(!await tools.evaluate(el=>el.open));
     }
     await page.locator('.workouts-menu>summary').click();await page.getByRole('link',{name:'Add Workout',exact:true}).click();await page.locator('[data-manual-entry]').waitFor();

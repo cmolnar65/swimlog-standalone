@@ -1,9 +1,6 @@
 <?php
 $wordpressHost = parse_url($config['wordpress_origin'], PHP_URL_HOST);
 $tools = array(
-    array('Manage workouts','swimlog-workouts','swimlog_manage_own_workouts'),
-    array('Planned workouts','swimlog-planned-workouts','swimlog_manage_own_workouts'),
-    array('Structured workouts','swimlog-structured-workouts','swimlog_manage_own_workouts'),
     array('Personal bests','swimlog-personal-bests','swimlog_view_own_results'),
     array('Garmin Connect','swimlog-garmin','swimlog_view_own_results'),
     array('Preferences','swimlog-privacy','swimlog_view_own_results'),

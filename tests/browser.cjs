@@ -318,7 +318,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.waitForURL(/view=month/);
       assert((await page.locator('.calendar-day').count())>=28);
       await page.locator('.tools-menu:not(.events-menu):not(.workouts-menu)>summary').tap();
-      assert((await page.getByRole('link',{name:'Manage workouts',exact:true}).getAttribute('href')).startsWith('https://wordpress.example.test/'));
+      assert((await page.getByRole('link',{name:'Personal bests',exact:true}).getAttribute('href')).startsWith('https://wordpress.example.test/'));
       await page.locator('.tools-menu:not(.events-menu):not(.workouts-menu)>summary').tap();
       console.log(`${name}: branded calendar, owner privacy, desktop/phone widths, touch details, month/week navigation passed.`);
       await closeDay();await page.locator('.workouts-menu>summary').tap();
