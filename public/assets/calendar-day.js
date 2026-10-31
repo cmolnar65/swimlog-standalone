@@ -22,7 +22,7 @@
   document.addEventListener('click',event=>{
     const link=event.target.closest?.('[data-day-open]');
     if(!link||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey) return;
-    event.preventDefault();source=link.closest('.calendar-day');trigger=link;scroll=window.scrollY;
+    event.preventDefault();outsideDown=false;source=link.closest('.calendar-day');trigger=link;scroll=window.scrollY;
     dialog.querySelector('#calendar-day-title').textContent=source.getAttribute('aria-label');
     const body=dialog.querySelector('[data-day-items]');
     for(const entry of Array.from(source.querySelector('.day-items').children)) { entry.hidden=false;entry.draggable=false;body.append(entry); }
@@ -39,7 +39,7 @@
     trigger?.focus({preventScroll:true});window.scrollTo(0,scroll);window.dispatchEvent(new Event('resize'));
   });
   const outside=e=>{const r=dialog.getBoundingClientRect();return e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom;};
-  dialog.addEventListener('pointerdown',e=>{outsideDown=outside(e);});
-  dialog.addEventListener('click',e=>{if(outsideDown&&outside(e)){e.stopPropagation();dialog.close();}outsideDown=false;});
+  dialog.addEventListener('pointerdown',e=>{outsideDown=e.target===dialog&&outside(e);});
+  dialog.addEventListener('click',e=>{if(outsideDown&&e.target===dialog&&outside(e)){e.stopPropagation();dialog.close();}outsideDown=false;});
   window.addEventListener('resize',measure);measure();
 })();

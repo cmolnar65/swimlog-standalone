@@ -29,7 +29,7 @@ const { chromium, firefox, webkit } = require('playwright');
           assert(await entry.isVisible());
         }
       }
-      async function tapEntry(entry) { await reveal(entry);await entry.tap(); }
+      async function tapEntry(entry) { await reveal(entry);try {await entry.tap();}catch(error){console.error(JSON.stringify(await entry.evaluate(el=>{const path=[];for(let p=el;p;p=p.parentElement)path.push({tag:p.tagName,id:p.id,hidden:p.hidden,open:p.open,rect:p.getBoundingClientRect().toJSON()});return path;})));throw error;} }
 
       page.on('request', request => {
         const url=new URL(request.url());
