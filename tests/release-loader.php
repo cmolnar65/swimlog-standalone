@@ -14,6 +14,7 @@ file_put_contents($root . '/loader.php', $loader);
 file_put_contents($root . '/runner.php', <<<'RUNNER'
 <?php
 function add_action() {}
+function add_filter() {}
 define('ABSPATH', __DIR__ . '/');
 if ($argv[1] === 'pin') {
     define('SWIMLOG_STANDALONE_RELEASE_DIR', __DIR__ . '/new');

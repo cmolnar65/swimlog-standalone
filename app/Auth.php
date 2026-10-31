@@ -70,6 +70,11 @@ final class Auth {
     public static function cleanup($key) {
         if (is_string($key) && preg_match('/^swimlog_sso_[a-f0-9]{64}$/D', $key)) delete_option($key);
     }
+    public static function loginFailure($origin) {
+        self::headers();
+        header('Location: ' . self::origin($origin) . '/?login_error=1', true, 303);
+        exit;
+    }
     public static function headers() {
         header('Cache-Control: private, no-store, max-age=0');
         header('Pragma: no-cache');

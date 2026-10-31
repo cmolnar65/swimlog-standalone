@@ -21,15 +21,12 @@ const { chromium, firefox, webkit } = require('playwright');
       });
       await page.goto('https://swimlog.example.test/');
       await page.getByRole('button', {name:'Sign in with wordpress.example.test', exact:true}).click();
-      try { await page.getByRole('button', {name:'Continue to swimlog.example.test', exact:true}).waitFor({timeout:10000}); } catch (error) {
+      try { await page.getByRole('heading', {name:'Welcome, <script>synthetic</script>', exact:true}).waitFor({timeout:15000}); } catch (error) {
         console.error(JSON.stringify(navigation));
         console.error((await page.locator('body').innerText()).slice(0,300));
         throw error;
       }
       assert.equal(posts[0].origin, 'https://swimlog.example.test');
-      await page.getByRole('button', {name:'Continue to swimlog.example.test', exact:true}).click();
-      await page.getByRole('button', {name:'Open Swim Log', exact:true}).click();
-      await page.getByRole('heading', {name:'Welcome, <script>synthetic</script>', exact:true}).waitFor();
       assert.equal(posts[1].origin, 'https://wordpress.example.test');
       assert.equal(posts[2].origin, 'https://wordpress.example.test');
       const cookies = await context.cookies('https://swimlog.example.test/');
@@ -68,7 +65,23 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.getByRole('button', {name:'Log out', exact:true}).click();
       await page.getByText('You have been signed out.', {exact:true}).waitFor();
       assert.equal(posts[3].origin, 'https://swimlog.example.test');
-      console.log(`${name}: actual browser form login, handoff, host-only cookie and logout passed.`);
+      console.log(`${name}: automatic login-to-calendar handoff, host-only cookie and logout passed.`);
+      // Exercise actual WordPress credentials, failure return, and successful retry.
+      await page.getByRole('button', {name:'Sign in with wordpress.example.test', exact:true}).click();
+      await page.locator('#user_login').fill('synthetic_swimmer');
+      await page.locator('#user_pass').fill('incorrect');
+      await page.locator('#wp-submit').click();
+      await page.getByRole('alert').filter({hasText:'Sign-in could not be completed'}).waitFor();
+      assert.equal(new URL(page.url()).hostname,'swimlog.example.test');
+      await page.getByRole('button', {name:'Sign in with wordpress.example.test', exact:true}).click();
+      await page.locator('#user_login').fill('synthetic_swimmer');
+      await page.locator('#user_pass').fill('synthetic-login-only');
+      await page.locator('#wp-submit').click();
+      await page.locator('#calendar-title').waitFor();
+      assert.equal(await page.getByRole('button',{name:'Continue to Swim Log',exact:true}).count(),0);
+      await page.getByRole('button', {name:'Log out', exact:true}).click();
+      await page.getByText('You have been signed out.', {exact:true}).waitFor();
+      console.log(`${name}: failed WordPress login returns to sign-in; correct retry opens calendar automatically.`);
       await context.close();
     } finally { await browser.close(); }
   }

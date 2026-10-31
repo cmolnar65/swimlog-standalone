@@ -15,7 +15,7 @@ try {
     if (!is_string($action)) { http_response_code(400); exit('Invalid request.'); }
     if ($action === 'callback') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
-        if (($_SERVER['HTTP_ORIGIN'] ?? '') !== $config['wordpress_origin']) { http_response_code(403); exit('Invalid origin.'); }
+        if (($_SERVER['HTTP_ORIGIN'] ?? '') !== $config['wordpress_origin']) Auth::loginFailure($config['app_origin']);
         $cookie = Auth::redeem($_POST['code'] ?? '', $_COOKIE[Auth::STATE_COOKIE] ?? '');
         Auth::cookie(LOGGED_IN_COOKIE, $cookie); // Same signed session, no lifetime extension; browser-session persistence.
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
@@ -41,13 +41,14 @@ try {
     }
     if ($action !== '' || !in_array($method, array('GET', 'HEAD'), true)) { http_response_code(404); exit('Not found.'); }
     if ($owner && !Auth::requireCapability($owner)) { http_response_code(403); exit('Your account does not have Swim Log access.'); }
-    $signedIn = $owner > 0;
+    $signedIn = $owner > 0 && !isset($_GET['login_error']);
     if ($signedIn) {
         require_once dirname(__DIR__) . '/app/CalendarView.php';
         $calendar = \SwimlogStandalone\CalendarView::load($owner, $_GET);
     }
     require dirname(__DIR__) . '/app/home.php';
 } catch (Throwable $error) {
+    if (isset($action, $config['app_origin']) && $action === 'callback') Auth::loginFailure($config['app_origin']);
     http_response_code(isset($action) && $action === 'callback' ? 403 : 503);
     header('Cache-Control: no-store');
     // Never log exception text containing cookie, grant or credentials.

@@ -28,10 +28,11 @@ is recorded in CI and branding provenance. Missing capabilities fail closed.
    SameSite=Lax, host-only browser verifier cookie is created.
 2. The browser visits a narrowly scoped companion route on cmolnar.com. Existing WordPress login handles
    passwords, password reset, login security plugins and authentication.
-3. The signed-in user confirms with a session/action-bound WordPress nonce.
+3. The browser automatically posts a session/action-bound WordPress nonce.
 4. An encrypted, 120-second grant is stored in non-autoloaded WordPress options.
    The browser posts an opaque one-time code to the fixed application callback.
-   This deliberate two-button confirmation needs no inline JavaScript.
+   Both handoff forms submit automatically using a per-response CSP nonce;
+   JavaScript-disabled browsers retain a manual fallback button.
 5. The callback checks exact Origin, browser verifier, grant expiry, capability and
    the original session. An atomic compare-and-delete permits exactly one redemption.
 6. Only the original WordPress logged-in cookie is set on the application host,
@@ -114,3 +115,18 @@ mixed-owner/swim/land/event/plan fixtures cover owner isolation, separate totals
 null/zero distances, leap February, all week starts and schema errors. Browser tests
 cover real authentication plus calendar navigation, touch details and no horizontal
 overflow at 1440, 768, 390 and 320 CSS pixels in Chromium, Firefox and WebKit.
+
+## Automatic authentication handoff
+
+After standard WordPress login, the main-site companion automatically submits its
+nonce-protected confirmation and the one-time callback POST. Users arrive directly
+at the calendar without confirmation buttons when JavaScript is enabled. This does
+not remove the real-cookie, capability, expiry, Origin, nonce or browser-verifier
+checks. Each script has a cryptographically random CSP nonce; unsafe-inline is not
+allowed. No-script browsers retain a manual continuation fallback.
+
+Failed credentials (including an empty submission) on this application's WordPress
+login return to the standalone sign-in screen with a generic retry message. The
+hooks recognize only the fixed companion return route and leave ordinary WordPress
+login attempts unchanged. Rejected/expired handoffs also return to that screen;
+no account-existence, credential or session details are shown.

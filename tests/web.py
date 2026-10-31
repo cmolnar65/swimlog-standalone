@@ -24,6 +24,11 @@ def request(host, path='/', data=None, cookie='', origin=None, extra=None):
     except urllib.error.HTTPError as error: response = error
     return response.status, response.headers, response.read().decode()
 
+def login_failure(result):
+    status, headers, body = result
+    check(status == 303 and headers.get('Location') == 'https://swimlog.example.test/?login_error=1')
+    check(not any(value.startswith(fixture['name'] + '=') for value in headers.get_all('Set-Cookie', [])))
+
 def form_value(body, name):
     return html.unescape(re.search(r'name="' + name + r'" value="([^"]+)"', body)[1])
 
@@ -53,23 +58,26 @@ check(endpoint.startswith('/?swimlog_standalone_auth=1&challenge='))
 status, headers, body = request(main, endpoint)
 check(status == 302 and '/wp-login.php' in headers['Location'])
 status, headers, body = request(main, endpoint, cookie=main_cookie)
-check(status == 200 and '<script>synthetic</script>' not in body and '&lt;script&gt;' in body)
+check(status == 200 and 'Signing you in' in body)
+script_nonce = re.search(r'<script nonce="([^"]+)"', body)[1]
+check("'nonce-" + script_nonce + "'" in headers['Content-Security-Policy'])
+check("'unsafe-inline'" not in headers['Content-Security-Policy'])
 nonce = form_value(body, 'nonce')
 challenge = form_value(body, 'challenge')
-check(request(main, endpoint, {'challenge': challenge}, cookie=main_cookie, origin=main_origin)[0] == 403)
+login_failure(request(main, endpoint, {'challenge': challenge}, cookie=main_cookie, origin=main_origin))
 status, headers, body = request(main, endpoint, {'challenge': challenge, 'nonce': nonce}, cookie=main_cookie, origin=main_origin)
 check(status == 200)
 code = form_value(body, 'code')
 check(fixture['cookie'] not in body)
-check(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + verifier, origin='https://evil.example.test')[0] == 403)
-check(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + '0'*64, origin=main_origin)[0] == 403)
+login_failure(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + verifier, origin='https://evil.example.test'))
+login_failure(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + '0'*64, origin=main_origin))
 status, headers, body = request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + verifier, origin=main_origin)
 check(status == 303)
 cookies = headers.get_all('Set-Cookie')
 auth = next(c for c in cookies if c.startswith(fixture['name'] + '='))
 check('secure' in auth.lower() and 'httponly' in auth.lower() and 'samesite=lax' in auth.lower() and 'domain=' not in auth.lower())
 check('expires=' not in auth.lower())
-check(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + verifier, origin=main_origin)[0] == 403)
+login_failure(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + verifier, origin=main_origin))
 status, headers, body = request(app, cookie=main_cookie)
 check(status == 200 and 'Welcome,' in body and '&lt;script&gt;' in body and '<script>synthetic</script>' not in body)
 check(request(app, cookie=fixture['name'] + '=' + fixture['other'])[0] == 403)
@@ -79,4 +87,10 @@ check(request(app, '/?action=logout', {'nonce': logout_nonce}, cookie=main_cooki
 check(request(app, '/?action=logout', {'nonce': logout_nonce}, cookie=main_cookie, origin=app_origin)[0] == 303)
 check('Welcome,' not in request(app, cookie=main_cookie)[2])
 check(request(main, endpoint, cookie=main_cookie)[0] == 302)
+for username, password in [('synthetic_swimmer','incorrect'),('','')]:
+    login_failure(request(main, '/wp-login.php', {'log':username,'pwd':password,'redirect_to':main_origin+endpoint,'wp-submit':'Log In'}, origin=main_origin))
+status, headers, body = request(app, '/?login_error=1')
+check(status == 200 and 'Sign-in could not be completed' in body and 'data-swimlog-login' in body and 'Welcome,' not in body)
+status, headers, body = request(main, '/wp-login.php', {'log':'synthetic_swimmer','pwd':'incorrect','redirect_to':main_origin+'/wp-admin/','wp-submit':'Log In'}, origin=main_origin)
+check(status == 200 and headers.get('Location') is None)
 print(f'HTTP authentication passed: {count} assertions.')
