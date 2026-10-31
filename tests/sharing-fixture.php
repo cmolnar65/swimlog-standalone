@@ -21,5 +21,6 @@ update_user_meta($owner,'swimlog_public_results','1');delete_user_meta($owner,'s
 foreach($ids as$key=>$id){if($key==='cycling')continue;$s=V::get_for_owner($id);$r=V::set_for_owner($id,array('visibility'=>in_array($key,array('pool','open_water','running','walking'),true)?'public':'private','route_public'=>false),wp_create_nonce('swimlog_workout_visibility_'.$id),$s['revision']);if(is_wp_error($r))throw new RuntimeException('Sharing fixture visibility failed.');}
 update_user_meta($owner,'_standalone_workout_public_'.$ids['pending'],'1');
 $manager=get_user_by('login','synthetic_sharing_manager');if(!$manager){$managerId=wp_create_user('synthetic_sharing_manager','synthetic-manager-login','manager@example.test');$manager=get_user_by('id',$managerId);}
+$manager->set_role('administrator');
 foreach(array('swimlog_view_own_results','swimlog_manage_own_workouts','swimlog_manage_all_users')as$cap)$manager->add_cap($cap);
 file_put_contents('/tmp/swimlog-sharing.json',wp_json_encode(array('name'=>LOGGED_IN_COOKIE,'cookie'=>wp_generate_auth_cookie($owner,time()+3600,'logged_in'),'manager'=>wp_generate_auth_cookie($manager->ID,time()+3600,'logged_in'),'owner'=>$owner,'ids'=>$ids)));

@@ -9,7 +9,7 @@ function sharing_input($id,$op='visibility',$extra=array()){
  return array('workout_id'=>(string)$id,'operation'=>$op,'nonce'=>wp_create_nonce('standalone_workout_'.$op.'_'.$id),'revision'=>$item['revision'],'visibility_nonce'=>wp_create_nonce('swimlog_workout_visibility_'.$id),'visibility_revision'=>(string)$s['revision'])+$extra;
 }
 function sharing_submit($in,$files=array()){$owner=$GLOBALS['sharing_owner'];return E::submit($owner,$in,$files,'https://swimlog.example.test','https://swimlog.example.test');}
-$check(S::ready());$id=$ids['pool'];
+$check(S::ready());$check(in_array('administrator',get_user_by('login','synthetic_sharing_manager')->roles,true));$id=$ids['pool'];
 $in=sharing_input($id,'visibility',array('make_public'=>'1','share_route'=>'1'));
 foreach(array('nonce','visibility_nonce')as$key){$bad=$in;unset($bad[$key]);$check(is_wp_error(sharing_submit($bad)));$bad[$key]='bad';$check(is_wp_error(sharing_submit($bad)));}
 $check(is_wp_error(E::submit($owner,$in,array(),'https://evil.example.test','https://swimlog.example.test')));
