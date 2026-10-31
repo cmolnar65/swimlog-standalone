@@ -45,11 +45,59 @@ const { chromium, firefox, webkit } = require('playwright');
         assert.equal(display,width<=700?'block':'grid');
         const image=page.locator('.brand img');
         assert(await image.evaluate(el=>el.complete && el.naturalWidth===256));
-        const entry=page.locator('.calendar-entry').first();
-        if (width<=390) await entry.locator('summary').tap(); else await entry.locator('summary').click();
-        assert(await entry.evaluate(el=>el.open));
-        await entry.locator('summary').click();
+        const entry=page.locator('a[data-workout-id="'+fixture.workouts.pool+'"]').first();
+        await entry.scrollIntoViewIfNeeded();
+        const scrollBefore=await page.evaluate(()=>scrollY);
+        if (width<=390) await entry.tap(); else await entry.click();
+        await page.locator('#workout-dialog .workout-content').waitFor();
+        assert(await page.locator('#workout-dialog').evaluate(el=>el.open));
+        assert((await page.locator('#workout-dialog').innerText()).includes('Lengths and rest'));
+        assert.equal(await page.locator('#workout-dialog img').count(),0);
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+        for(let tab=0;tab<6;tab++) { await page.keyboard.press('Tab'); assert(await page.evaluate(()=>!!document.activeElement.closest('#workout-dialog'))); }
+        await page.locator('.workout-dialog-body').evaluate(el=>el.scrollTop=400);
+        if(width===1440) await page.keyboard.press('Escape');
+        else if(width===768) await page.getByRole('button',{name:'Close workout details',exact:true}).click();
+        else await page.touchscreen.tap(3,3);
+        await page.waitForFunction(()=>!document.getElementById('workout-dialog').open && document.querySelector('[data-workout-content]').childElementCount===0);
+        assert.equal(await entry.getAttribute('aria-expanded'),'false');
+        assert(await entry.evaluate(el=>document.activeElement===el));
+        assert(Math.abs((await page.evaluate(()=>scrollY))-scrollBefore)<=3);
+
       }
+      // Reopening, route/no-GPS states, keyboard activation and retry.
+      for(const type of ['open_water','running','walking']) {
+        await page.locator('a[data-workout-id="'+fixture.workouts[type]+'"]').tap();
+        await page.locator('#workout-dialog .workout-content').waitFor();
+        if(type==='walking') assert((await page.locator('#workout-dialog').innerText()).includes('No usable GPS route'));
+        else assert.equal(await page.locator('#workout-dialog polyline').count(),2);
+        await page.getByRole('button',{name:'Close workout details',exact:true}).tap();
+        await page.waitForFunction(()=>!document.getElementById('workout-dialog').open);
+      }
+      const pool=page.locator('a[data-workout-id="'+fixture.workouts.pool+'"]').first();
+      await pool.focus(); await page.keyboard.press('Enter');
+      await page.locator('#workout-dialog .workout-content').waitFor();
+      await page.keyboard.press('Escape');
+      const matchDetail=url=>url.searchParams.get('action')==='workout_detail' && url.searchParams.get('id')===String(fixture.workouts.pool);
+      let failures=0;
+      await page.route(matchDetail, route=> failures++===0 ? route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic temporary failure'})}) : route.continue());
+      await pool.tap(); await page.getByRole('button',{name:'Retry',exact:true}).tap();
+      await page.locator('#workout-dialog .workout-content').waitFor();
+      await page.getByRole('button',{name:'Close workout details',exact:true}).tap();
+      await page.unroute(matchDetail);
+      // A slow response must not reappear after tap-off and a different workout.
+      await page.route(matchDetail, async route=>{
+        const response=await route.fetch(); await new Promise(resolve=>setTimeout(resolve,400));
+        try { await route.fulfill({response}); } catch(_) { /* closed request was aborted */ }
+      });
+      await pool.tap(); await page.getByRole('button',{name:'Close workout details',exact:true}).tap();
+      await page.locator('a[data-workout-id="'+fixture.workouts.walking+'"]').tap();
+      await page.locator('#workout-dialog .workout-content').waitFor();
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('#workout-dialog [data-workout-id]').getAttribute('data-workout-id'),String(fixture.workouts.walking));
+      await page.getByRole('button',{name:'Close workout details',exact:true}).tap();
+      await page.unroute(matchDetail);
+      console.log(`${name}: desktop pop-up, phone tap-on/off, Escape/Close/outside dismissal, focus/scroll restore, routes, retry and stale-response isolation passed.`);
       await page.getByRole('navigation',{name:'Calendar view'}).getByRole('link',{name:'Week',exact:true}).tap();
       await page.waitForURL(/view=week/);
       assert.equal(await page.locator('.calendar-day').count(),7);

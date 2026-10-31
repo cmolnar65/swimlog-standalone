@@ -45,6 +45,6 @@ final class CalendarView {
         $type = $row['workout_type'];
         $distance = $plan ? self::distance($row['planned_distance_m']) : (isset($row['original_distance']) && !empty($row['original_distance_unit']) ? self::distance($row['original_distance'], $row['original_distance_unit']) : self::distance($row['total_distance_m']));
         $duration = $plan ? $row['planned_duration_ms'] : $row['elapsed_time_ms'];
-        return array('label'=>$plan ? ($row['title'] ?: 'Planned swim') : ($labels[$type] ?? 'Workout'), 'type'=>$plan ? 'plan' : $type, 'distance'=>$distance, 'time'=>$duration !== null ? \SwimLogEvaluation\Workout::format_duration($duration) : null, 'location'=>$plan ? null : $row['location'], 'pb'=>!empty($row['has_personal_best']), 'matched'=>!empty($row['matched_to_plan']), 'status'=>$plan ? ucfirst($row['status']) : 'Recorded', 'instructions'=>$plan ? $row['workout_instructions'] : '');
+        return array('id'=>(int)$row['id'],'recorded'=>!$plan,'label'=>$plan ? ($row['title'] ?: 'Planned swim') : ($labels[$type] ?? 'Workout'), 'type'=>$plan ? 'plan' : $type, 'distance'=>$distance, 'time'=>$duration !== null ? \SwimLogEvaluation\Workout::format_duration($duration) : null, 'location'=>$plan ? null : $row['location'], 'pb'=>!empty($row['has_personal_best']), 'matched'=>!empty($row['matched_to_plan']), 'status'=>$plan ? ucfirst($row['status']) : 'Recorded', 'instructions'=>$plan ? $row['workout_instructions'] : '');
     }
 }

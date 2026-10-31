@@ -130,3 +130,30 @@ login return to the standalone sign-in screen with a generic retry message. The
 hooks recognize only the fixed companion return route and leave ordinary WordPress
 login attempts unchanged. Rejected/expired handoffs also return to that screen;
 no account-existence, credential or session details are shown.
+
+## Workout details from the calendar
+
+Recorded activity cards open a native modal on desktop and mobile. Close, Escape,
+outside click/tap and repeated trigger activation dismiss it; focus and calendar
+scroll position are restored. The body scrolls separately, wide tables pan inside
+the dialog, and the close control remains visible. Requests are aborted on close;
+a generation guard prevents a late response from replacing a different workout.
+Private content is removed from the closed dialog. Loading, retry and expired-session
+states are explicit. Without JavaScript/dialog support, real links open a protected
+standalone detail page with a return link preserving calendar date and view.
+
+The same-origin read-only detail endpoint requires the real WordPress cookie,
+own-results capability and a session-bound `swimlog_workout_detail` nonce. It derives
+the owner server-side and ignores client owner overrides; unknown and foreign IDs
+return the same 404. Land activities retain the existing additional owner capability
+checks. Responses are private/no-store. No notes, raw import metadata, source files,
+credentials or personal measurements are exposed by this surface.
+
+Summary/laps/lengths/SWOLF/performances use existing plugin services. Open-water pace
+and split calculations use the existing analytics service, retaining estimated labels.
+Routes reuse the plugin's public conservative SVG renderer (including sequence/time/
+missing-point gaps), sanitized for this page's CSP. No map tile service is contacted.
+The conservative renderer also requires recorded timestamps for open-water points;
+records without a usable connected segment show an explicit no-route state. Missing
+moving time, GPS, distances or stroke counts are not invented. No recorded data is
+modified. Large detail payloads fail explicitly rather than silently truncating.

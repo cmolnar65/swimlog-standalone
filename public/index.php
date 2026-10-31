@@ -3,7 +3,7 @@ use SwimlogStandalone\Auth;
 try {
     $config = require dirname(__DIR__) . '/app/bootstrap.php';
     Auth::headers();
-    header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; form-action 'self' " . $config['wordpress_origin'] . "; frame-ancestors 'none'; base-uri 'none'");
+    header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; form-action 'self' " . $config['wordpress_origin'] . "; frame-ancestors 'none'; base-uri 'none'");
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ($host !== parse_url($config['app_origin'], PHP_URL_HOST)) { http_response_code(400); exit('Invalid host.'); }
     if (!is_ssl()) {
@@ -39,12 +39,26 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if ($action === 'workout_detail') {
+        if (!in_array($method,array('GET','HEAD'),true)) { header('Allow: GET, HEAD'); wp_send_json(array('error'=>'Read-only endpoint.'),405); }
+        if (!$owner) wp_send_json(array('error'=>'Sign in to view workout details.'),401);
+        if (!Auth::requireCapability($owner) || !wp_verify_nonce((string)($_SERVER['HTTP_X_SWIMLOG_NONCE']??''),'swimlog_workout_detail')) wp_send_json(array('error'=>'Workout access denied. Refresh the calendar and try again.'),403);
+        require_once dirname(__DIR__).'/app/WorkoutDetails.php';
+        $detail=\SwimlogStandalone\WorkoutDetails::load($owner,$_GET['id']??null);
+        if (is_wp_error($detail)) wp_send_json(array('error'=>$detail->get_error_message()),(int)($detail->get_error_data()['status']??400));
+        wp_send_json(array('html'=>\SwimlogStandalone\WorkoutDetails::render($detail)),200);
+    }
     if ($action !== '' || !in_array($method, array('GET', 'HEAD'), true)) { http_response_code(404); exit('Not found.'); }
     if ($owner && !Auth::requireCapability($owner)) { http_response_code(403); exit('Your account does not have Swim Log access.'); }
     $signedIn = $owner > 0 && !isset($_GET['login_error']);
     if ($signedIn) {
         require_once dirname(__DIR__) . '/app/CalendarView.php';
         $calendar = \SwimlogStandalone\CalendarView::load($owner, $_GET);
+        if (isset($_GET['workout'])) {
+            require_once dirname(__DIR__).'/app/WorkoutDetails.php';
+            $workoutDetail=\SwimlogStandalone\WorkoutDetails::load($owner,$_GET['workout']);
+            if (is_wp_error($workoutDetail)) http_response_code((int)($workoutDetail->get_error_data()['status']??400));
+        }
     }
     require dirname(__DIR__) . '/app/home.php';
 } catch (Throwable $error) {

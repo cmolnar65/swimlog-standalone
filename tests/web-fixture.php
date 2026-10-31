@@ -10,5 +10,5 @@ clean_user_cache($owner->ID);
 $expiry = time() + 3600;
 $cookie = wp_generate_auth_cookie($owner->ID, $expiry, 'logged_in');
 $otherCookie = wp_generate_auth_cookie($other->ID, $expiry, 'logged_in');
-file_put_contents(getenv('SWIMLOG_WEB_FIXTURE'), json_encode(array('name' => LOGGED_IN_COOKIE, 'cookie' => $cookie, 'other' => $otherCookie)));
+file_put_contents(getenv('SWIMLOG_WEB_FIXTURE'), json_encode(array('name' => LOGGED_IN_COOKIE, 'cookie' => $cookie, 'other' => $otherCookie, 'workouts' => get_user_meta($owner->ID,'standalone_detail_fixture',true))));
 chmod(getenv('SWIMLOG_WEB_FIXTURE'), 0600);

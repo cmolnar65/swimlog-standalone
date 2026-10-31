@@ -1,0 +1,62 @@
+/* Private same-origin workout pop-up; no history or route data is persisted. */
+(() => {
+  'use strict';
+  const dialog = document.getElementById('workout-dialog');
+  if (!dialog || typeof dialog.showModal !== 'function') return; // Real links remain usable without JS.
+  const content = dialog.querySelector('[data-workout-content]');
+  let trigger = null, controller = null, generation = 0, savedScroll = 0, outsideDown = false;
+  const close = () => { if (dialog.open) dialog.close(); };
+  function clear() {
+    ++generation;
+    controller?.abort(); controller = null;
+    content.replaceChildren();
+    document.documentElement.classList.remove('workout-dialog-open');
+    const previous = trigger; trigger = null;
+    if (previous?.isConnected) { previous.setAttribute('aria-expanded', 'false'); previous.focus({preventScroll:true}); }
+    window.scrollTo(0,savedScroll);
+  }
+  function message(text, retry = false) {
+    const paragraph = document.createElement('p'); paragraph.setAttribute('role', retry?'alert':'status'); paragraph.textContent = text;
+    content.replaceChildren(paragraph);
+    if (retry) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Retry';
+      button.addEventListener('click', () => load(trigger)); content.append(button);
+    }
+  }
+  async function load(source) {
+    controller?.abort(); controller = new AbortController(); const current = ++generation;
+    message('Loading workout details…');
+    try {
+      const url = new URL('/', window.location.origin); url.searchParams.set('action', 'workout_detail'); url.searchParams.set('id', source.dataset.workoutId);
+      const response = await fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal, headers:{'X-Swimlog-Nonce':dialog.dataset.detailNonce, 'Accept':'application/json'}});
+      const data = await response.json();
+      if (current !== generation || !dialog.open) return;
+      if (!response.ok) {
+        message(response.status===401?'Your session has expired. Close this window and sign in again.':(data.error || 'Workout details are unavailable.'), response.status>=500);
+        return;
+      }
+      // HTML is rendered/escaped by our authenticated PHP template; no raw records are serialized.
+      content.innerHTML = data.html;
+    } catch (error) {
+      if (error.name !== 'AbortError' && current === generation && dialog.open) message('Could not load workout details. Please retry.', true);
+    }
+  }
+  document.addEventListener('click', event => {
+    const source = event.target instanceof Element ? event.target.closest('a[data-workout-id]') : null;
+    if (!source || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    if (dialog.open && source === trigger) { close(); return; }
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    trigger = source; source.setAttribute('aria-expanded', 'true');
+    if (!dialog.open) {
+      savedScroll = window.scrollY; document.documentElement.classList.add('workout-dialog-open');
+      dialog.showModal(); dialog.querySelector('[data-workout-close]').focus({preventScroll:true});
+    }
+    load(source);
+  });
+  dialog.querySelector('[data-workout-close]').addEventListener('click', close);
+  dialog.addEventListener('close', () => { if (!dialog.open) clear(); }); // Includes native Escape/cancel and mobile dismissal.
+  const outside = event => { const r=dialog.getBoundingClientRect(); return event.clientX<r.left || event.clientX>r.right || event.clientY<r.top || event.clientY>r.bottom; };
+  dialog.addEventListener('pointerdown', event => { outsideDown=outside(event); });
+  dialog.addEventListener('click', event => { if (outsideDown && outside(event)) { event.stopPropagation(); close(); } outsideDown=false; });
+})();

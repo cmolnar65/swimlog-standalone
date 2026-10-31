@@ -22,7 +22,7 @@ calendar_check(strpos($serialized,'"label":"Run"')!==false);
 calendar_check(strpos($serialized,'"label":"Walk"')!==false);
 $today=$calendar['today']->format('Y-m-d');
 $week=array_values(array_filter($calendar['weeks'],function($w)use($today){return $w['start']<=$today&&$w['end']>=$today;}))[0];
-calendar_check((float)$week['distance_m']===2000.0);
+calendar_check((float)$week['distance_m']===4500.0);
 calendar_check((float)$week['running_distance_m']===3000.0 && (int)$week['walking_distance_samples']===0);
 calendar_check(is_wp_error(CV::load($other,array())));
 calendar_check(is_wp_error(CV::load($owner,array('date'=>array('bad')))));

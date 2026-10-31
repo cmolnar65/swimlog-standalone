@@ -1,0 +1,32 @@
+<?php
+if (getenv('SWIMLOG_SYNTHETIC_TEST')!=='1') throw new RuntimeException('Disposable test flag required.');
+require_once dirname(__DIR__).'/app/Auth.php'; require_once dirname(__DIR__).'/app/WorkoutDetails.php';
+use SwimlogStandalone\WorkoutDetails as WD;
+$fixture=json_decode(file_get_contents(getenv('SWIMLOG_WEB_FIXTURE')),true);
+$_COOKIE[LOGGED_IN_COOKIE]=$fixture['cookie']; $owner=(int)wp_validate_auth_cookie($fixture['cookie'],'logged_in'); wp_set_current_user($owner);
+$ids=get_user_meta($owner,'standalone_detail_fixture',true); $GLOBALS['detail_checks']=0;
+function detail_check($value) { ++$GLOBALS['detail_checks']; if(!$value)throw new RuntimeException('Workout detail assertion '.$GLOBALS['detail_checks'].' failed.'); }
+$pool=WD::load($owner,$ids['pool']); detail_check(!is_wp_error($pool));
+detail_check(count($pool['laps'])===4 && count($pool['lengths'])===81);
+detail_check($pool['summary']['Average SWOLF']==='35.00' && $pool['summary']['Recorded moving time']==='—');
+$html=WD::render($pool);
+detail_check(strpos($html,'Lengths and rest')!==false && strpos($html,'Breaststroke')!==false && strpos($html,'★ Personal best')!==false);
+detail_check(strpos($html,'<img src=x')===false && strpos($html,'&lt;img')!==false);
+detail_check(strpos($html,'PRIVATE_NOTES_CANARY')===false && strpos($html,'PRIVATE_RAW_CANARY')===false);
+detail_check(strpos($html,'<td>0</td>')!==false);
+$run=WD::load($owner,$ids['running']); detail_check(!is_wp_error($run) && $run['summary']['Environment']==='Unknown');
+detail_check(substr_count($run['route'],'<polyline')===2);
+detail_check(strpos($run['route'],'style=')===false && strpos($run['route'],'10.001')===false);
+detail_check(strpos(WD::render($run),'SWOLF')===false && strpos(WD::render($run),'Lengths and rest')===false);
+$walk=WD::load($owner,$ids['walking']); detail_check($walk['summary']['Distance']==='Distance unavailable' && $walk['route']==='');
+detail_check(strpos(WD::render($walk),'No usable GPS route')!==false);
+$open=WD::load($owner,$ids['open_water']); detail_check($open['type']==='open_water' && !empty($open['analytics']['splits']));
+detail_check(strpos(WD::render($open),'Open-water summary')!==false && strpos(WD::render($open),'Lengths and rest')===false);
+$foreign=WD::load($owner,$ids['foreign']); $missing=WD::load($owner,99999999);
+detail_check(is_wp_error($foreign) && $foreign->get_error_message()===$missing->get_error_message() && $foreign->get_error_data()['status']===404);
+$user=get_user_by('id',$owner); $user->add_cap('swimlog_manage_all_users'); detail_check(is_wp_error(WD::load($owner,$ids['foreign']))); $user->remove_cap('swimlog_manage_all_users');
+foreach(array(null,array('bad'),0,-1,'1 OR 1=1') as $id) detail_check(is_wp_error(WD::load($owner,$id)));
+$user->add_cap('swimlog_manage_own_workouts',false); wp_set_current_user(0); wp_set_current_user($owner);
+detail_check(is_wp_error(WD::load($owner,$ids['running'])));
+$user->add_cap('swimlog_manage_own_workouts',true); wp_set_current_user(0); wp_set_current_user($owner);
+echo 'Workout detail integration passed: '.$GLOBALS['detail_checks']." assertions.\n";
