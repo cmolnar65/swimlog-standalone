@@ -15,6 +15,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict'),engines=require
  await page.getByLabel('Course',{exact:true}).selectOption('yd');await page.getByRole('button',{name:'View records',exact:true}).click();assert.equal(new URL(page.url()).searchParams.get('course'),'yd');
  await page.getByText('No personal bests are available for this record period and course.',{exact:true}).waitFor();
  await page.getByLabel('Course',{exact:true}).selectOption('m');await page.getByRole('button',{name:'View records',exact:true}).click();
+ await page.waitForURL(u=>u.searchParams.get('course')==='m');await page.waitForLoadState('load');await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  const record=page.locator('[aria-label="Swimming personal bests"] a').first();await record.click();await page.locator('#workout-dialog').waitFor({state:'visible'});await page.locator('[data-workout-close]').click();
  console.log(name+': private Personal Bests filters, workout pop-up, navigation and desktop/mobile widths passed.');await context.close();
  } finally {await browser.close();}
