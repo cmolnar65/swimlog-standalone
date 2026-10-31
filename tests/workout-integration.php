@@ -7,7 +7,7 @@ $_COOKIE[LOGGED_IN_COOKIE]=$fixture['cookie']; $owner=(int)wp_validate_auth_cook
 $ids=get_user_meta($owner,'standalone_detail_fixture',true); $GLOBALS['detail_checks']=0;
 function detail_check($value) { ++$GLOBALS['detail_checks']; if(!$value)throw new RuntimeException('Workout detail assertion '.$GLOBALS['detail_checks'].' failed.'); }
 $pool=WD::load($owner,$ids['pool']); detail_check(!is_wp_error($pool));
-detail_check(count($pool['laps'])===4 && count($pool['lengths'])===81);
+detail_check(count($pool['laps'])===5 && count($pool['lengths'])===81);
 detail_check($pool['summary']['Average SWOLF']==='35.00' && $pool['summary']['Recorded moving time']==='—');
 $html=WD::render($pool);
 detail_check(strpos($html,'Lengths and rest')!==false && strpos($html,'Breaststroke')!==false && strpos($html,'★ Personal best')!==false);
@@ -25,6 +25,16 @@ detail_check(WD::isRestLength((object)array('length_type'=>'rest','distance_m'=>
 detail_check(!WD::isRestLength((object)array('length_type'=>'active','distance_m'=>0,'elapsed_time_ms'=>0)));
 detail_check(!WD::isRestLength((object)array('length_type'=>'active','distance_m'=>null,'elapsed_time_ms'=>90000)));
 detail_check(!WD::isRestLength((object)array('length_type'=>'active','distance_m'=>25,'elapsed_time_ms'=>90000)));
+// Synthetic pool rest laps can retain a source stroke.
+$lapDetail=$pool;
+$lapDetail['laps']=array((object)array('sequence_no'=>998,'distance_m'=>'0.000','elapsed_time_ms'=>45000,'moving_time_ms'=>null,'stroke'=>'FR'),(object)array('sequence_no'=>997,'distance_m'=>25,'elapsed_time_ms'=>20000,'moving_time_ms'=>null,'stroke'=>'FR'));
+$lapBefore=serialize($lapDetail['laps']);
+$lapHtml=WD::render($lapDetail);
+preg_match('/<tr><td>998<\/td>(.*?)<\/tr>/s',$lapHtml,$restLap);
+preg_match('/<tr><td>997<\/td>(.*?)<\/tr>/s',$lapHtml,$swimLap);
+detail_check(strpos($restLap[1],'<td>Rest</td>')!==false && strpos($restLap[1],'Freestyle')===false);
+detail_check(strpos($restLap[1],'45.00')!==false && strpos($swimLap[1],'Freestyle')!==false);
+detail_check(serialize($lapDetail['laps'])===$lapBefore);
 $run=WD::load($owner,$ids['running']); detail_check(!is_wp_error($run) && $run['summary']['Environment']==='Unknown');
 detail_check(substr_count($run['route'],'<polyline')===2);
 detail_check(strpos($run['route'],'style=')===false && strpos($run['route'],'10.001')===false);

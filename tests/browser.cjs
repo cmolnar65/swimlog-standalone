@@ -52,6 +52,9 @@ const { chromium, firefox, webkit } = require('playwright');
         await page.locator('#workout-dialog .workout-content').waitFor();
         assert(await page.locator('#workout-dialog').evaluate(el=>el.open));
         assert((await page.locator('#workout-dialog').innerText()).includes('Lengths and rest'));
+        const restLap=page.getByRole('region',{name:'Workout laps',exact:true}).locator('tbody tr').last();
+        assert.equal(await restLap.locator('td').last().innerText(),'Rest');
+        assert((await restLap.innerText()).includes('45.00'));
         assert.equal(await page.locator('#workout-dialog img').count(),0);
         assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
         for(let tab=0;tab<6;tab++) { await page.keyboard.press('Tab'); assert(await page.evaluate(()=>!!document.activeElement.closest('#workout-dialog'))); }
