@@ -225,8 +225,9 @@ const { chromium, firefox, webkit } = require('playwright');
       console.log(`${name}: move/copy forms, target date navigation, independent plan IDs, cancel and phone widths passed.`);
       // Native HTML drag/drop reschedules through the protected move handler.
       await page.setViewportSize({width:1440,height:1000});
-      const dragDate=new Date(today+'T12:00:00Z');dragDate.setUTCDate(21+['chromium','firefox','webkit'].indexOf(name)*2);
+      const dragDate=new Date(today+'T12:00:00Z');dragDate.setUTCDate(21);
       if(dragDate.toISOString().slice(0,10)<today)dragDate.setUTCMonth(dragDate.getUTCMonth()+1);
+      dragDate.setUTCMonth(dragDate.getUTCMonth()+['chromium','firefox','webkit'].indexOf(name)*2);
       const from=dragDate.toISOString().slice(0,10);dragDate.setUTCDate(dragDate.getUTCDate()+1);const to=dragDate.toISOString().slice(0,10);
       await closeDay();await page.getByRole('link',{name:'Plan workout',exact:true}).click();
       await page.locator('#plan-form-title').waitFor();
@@ -241,7 +242,6 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.waitForURL(url=>url.searchParams.get('date')===from);
       let draggable=page.locator('a[data-plan-id="'+dragId+'"]').first();
       assert.equal(await draggable.getAttribute('draggable'),'true');
-      console.log(name+': drag source '+JSON.stringify(await draggable.evaluate(el=>({width:innerWidth,cell:el.closest('.calendar-day').dataset.date,items:Array.from(el.parentElement.children).map(x=>({text:x.textContent,hidden:x.hidden,height:x.getBoundingClientRect().height,width:x.getBoundingClientRect().width}))}))));
       assert.equal(await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').count() ? await page.locator('a[data-plan-id="'+fixture.plans.matched+'"]').getAttribute('draggable') : 'false','false');
       await draggable.dragTo(page.locator('.calendar-day[data-date="'+to+'"]'));
       await page.waitForURL(url=>url.searchParams.get('date')===to&&url.searchParams.get('plan_result')==='moved');
