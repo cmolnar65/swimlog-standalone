@@ -52,8 +52,17 @@ try {
     if ($owner && !Auth::requireCapability($owner)) { http_response_code(403); exit('Your account does not have Swim Log access.'); }
     $signedIn = $owner > 0 && !isset($_GET['login_error']);
     if ($signedIn) {
-        require_once dirname(__DIR__) . '/app/CalendarView.php';
-        $calendar = \SwimlogStandalone\CalendarView::load($owner, $_GET);
+        $screen=$_GET['screen']??'calendar';
+        if (!is_string($screen)||!in_array($screen,array('calendar','log'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        require_once dirname(__DIR__).'/app/CalendarView.php';
+        if ($screen==='log') {
+            require_once dirname(__DIR__).'/app/WorkoutLog.php';
+            $log=\SwimlogStandalone\WorkoutLog::load($owner,$_GET);
+            $returnUrl=is_wp_error($log)?'/?screen=log':\SwimlogStandalone\WorkoutLog::url($log['filters'],$log['page']);
+        } else {
+            $calendar=\SwimlogStandalone\CalendarView::load($owner,$_GET);
+            $returnUrl=is_wp_error($calendar)?'/':\SwimlogStandalone\CalendarView::url($calendar['date'],$calendar['view']);
+        }
         if (isset($_GET['workout'])) {
             require_once dirname(__DIR__).'/app/WorkoutDetails.php';
             $workoutDetail=\SwimlogStandalone\WorkoutDetails::load($owner,$_GET['workout']);

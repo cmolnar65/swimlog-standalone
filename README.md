@@ -1,15 +1,15 @@
-# Swim Log standalone — authentication proof of concept
+# Swim Log standalone
 
 Dedicated interface for https://swimlog.cmolnar.com. WordPress at
 `/var/www/cmolnar.com/wp-load.php` remains the identity/session and data authority.
-The calendar reads owner-scoped records through the existing plugin services. No
+The calendar and workout log read owner-scoped records through the existing plugin services. No
 Swim Log business records are changed by this interface. No plugin schema,
 Swim Log source, main-plugin release, SVN or production database copy is involved.
 
 ## Layout
 
 - `public/`: the only Apache document root; CSS and front controller.
-- `app/`: authentication library, bootstrap and protected placeholder template.
+- `app/`: authentication, bootstrap and protected view adapters/templates.
 - `companion/`: small WordPress companion, loaded by a separate MU-plugin loader.
 - `config/example.php`: server configuration example, no credentials.
 - `scripts/`: explicit commit preparation, activation/rollback and companion installer.
@@ -54,7 +54,7 @@ reviewed. Existing host-only cookies must be confirmed before enabling the compa
 
 Full `wp-load.php` still runs active plugins and theme PHP; it bypasses theme template
 rendering, not all theme initialization. Configuration, unexpected output, cache,
-canonical/security plugin redirects and PHP-FPM handling need live acceptance.
+canonical/security plugin redirects and PHP handler behavior need live acceptance.
 The handoff route runs during `init`, before template rendering, without invoking
 `wp-admin` or `admin_init` maintenance/migration hooks. No global URL, cookie,
 theme, REST or CORS filters are installed.
@@ -157,3 +157,27 @@ The conservative renderer also requires recorded timestamps for open-water point
 records without a usable connected segment show an explicit no-route state. Missing
 moving time, GPS, distances or stroke counts are not invented. No recorded data is
 modified. Large detail payloads fail explicitly rather than silently truncating.
+
+## Workout Log
+
+The top-level Workout Log is a read-only, newest-first history with inclusive From/To
+dates, an activity filter and 20 workouts per page. The default range begins two
+months before the current month and ends today; All history clears both boundaries.
+Filters survive pagination and the protected detail-page return link. Desktop tables
+become labelled cards on narrow screens; details reuse the calendar modal, including
+tap-on/tap-off, Close, Escape and focus/scroll restoration. WordPress tools retains
+Manage workouts for existing editing/import features.
+
+`Workout::query_for_user` supplies owner-scoped queries and stable date/ID ordering.
+`Training_Trends::summarize_workouts` and `Land_Activity::distances` supply separate
+swimming/running/walking totals over all matching pages. Missing distances remain
+unknown, recorded zero remains zero, and individual rows retain original units.
+Land rows, filters and totals require the plugin's existing private-land authorization.
+No owner parameter, notes, measurements, Garmin jobs or credentials are exposed.
+
+Totals aggregate up to 10,000 matching workouts in bounded service-query batches.
+Larger histories remain paginated and ask for a narrower range for totals, rather
+than showing a partial total. This avoids an unbounded aggregation on every page
+without introducing table queries or duplicated calculations. Synthetic integration
+and browser checks cover pagination, filter boundaries, ownership/capability denial,
+unknown/zero/yard distances, all-page totals, empty/error states and mobile details.
