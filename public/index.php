@@ -39,6 +39,7 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if (in_array($action,array('settings_write','garmin_write'),true)||in_array($_GET['screen']??null,array('swimmer','locations','garmin_setup','garmin_activities','garmin_measurements','garmin_history'),true)) require dirname(__DIR__).'/app/configuration-route.php';
     if (in_array($action,array('manual_save','workout_upload'),true)||in_array($_GET['screen']??null,array('manual','import'),true)) require dirname(__DIR__).'/app/entry-route.php';
     if (in_array($action,array('structured_write','structured_download','structured_asset'),true)||($_GET['screen']??null)==='structures') require dirname(__DIR__).'/app/structured-route.php';
     if ($action === 'event_save') {

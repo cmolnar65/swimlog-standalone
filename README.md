@@ -371,3 +371,34 @@ Manual pool entry and recorded-file import now live at Workouts → Add Workout 
 File uploads always use Importer::import_upload and genuine PHP-upload validation, never the trusted FIT-provider entry point. FIT priority, supported archives, upload-type settings, exact duplicate/match handling, private source preservation and land-activity permissions remain plugin-owned. Probable matches are displayed for explicit attach/separate confirmation using owner-scoped pending services, fresh source/candidate snapshots and the existing owner lock. Up to 10 uploads and 10 pending comparisons per page are shown. Existing private storage must be present and writable outside both application roots; the adapter reuses the WordPress installation’s configured/default directory and does not create or relocate production source storage. PHP upload/post limits remain server-owned and are displayed on the form. Source paths, routes, notes and parser payloads are not serialized in reviews or receipts. No plugin/schema change is required. Menu trees are mutually exclusive, including mouse, touch, keyboard, Escape and outside dismissal.
 
 Desktop/tablet dropdowns align to their own trigger and clamp only at the viewport edge; their vertical position remains below all wrapped navigation rows. Phone menus remain in normal flow. Opening one menu closes all other trees and their nested disclosures. WordPress tools now lists only Personal bests, Garmin Connect and Preferences; duplicate workout/planned/structured shortcuts were removed. The structured submenu retains its WordPress PDF import link.
+
+
+### Settings and Garmin
+
+Settings contains Swimmer Configuration, owner-scoped Locations and Garmin Setup.
+Garmin Setup saves/verifies/removes the existing encrypted Personal API credential
+and configures the plugin's automatic activity and private measurement schedules.
+The Garmin operational menu appears only for a successfully verified connection:
+Import Activities, Import Measurements and Historical Imports. Direct requests
+also enforce verification, current WordPress session, operation capabilities,
+ownership, same-origin POST and WordPress nonces.
+
+All persistence/import/calculation work uses installed plugin services. Swimmer
+preferences use the existing admin settings validator inside a temporary,
+restored POST/REQUEST context; its markup is discarded and standalone markup is
+rendered. No plugin changes or schema changes are required. Automatic activity
+configuration retains the plugin's own-results permission; measurement operations
+require workout management, and activity imports require upload permission.
+Land activity selections additionally require the existing private-land rules.
+Credentials, routes and provider payloads are never serialized into page data.
+Existing history/jobs survive credential replacement/removal.
+
+WordPress tools now retains Personal bests only. Preferences and Garmin Connect
+are replaced by Settings/Garmin; prior duplicated workout/planned/structured links
+remain removed. Training-plan PDF import still links to its WordPress tool inside
+Workouts → Structured Workouts.
+
+Synthetic integration, HTTP and Chromium/Firefox/WebKit tests cover these screens.
+Garmin network calls are intercepted only in the disposable test installation;
+test helpers are excluded from deployment archives. Live Garmin provider behavior
+and physical-device acceptance still require user testing.

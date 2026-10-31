@@ -104,7 +104,7 @@ final class WorkoutEntry {
         usort($rows,static function($a,$b){$af=(bool)preg_match('/\.fit(?:\.gz)?$/i',$a['name']);$bf=(bool)preg_match('/\.fit(?:\.gz)?$/i',$b['name']);return $af===$bf?0:($af?-1:1);});return $rows;
     }
     private static function outcome($result,$name){if(is_wp_error($result))return array('name'=>$name,'error'=>$result->get_error_message());return array('name'=>$name,'pending'=>!empty($result['pending']),'workout_id'=>(int)($result['workout_id']??0),'attached'=>!empty($result['attached']));}
-    private static function withRoot($callback){$old=$_SERVER['DOCUMENT_ROOT']??null;$_SERVER['DOCUMENT_ROOT']=rtrim(ABSPATH,'/\\');try{return $callback();}finally{if($old===null)unset($_SERVER['DOCUMENT_ROOT']);else $_SERVER['DOCUMENT_ROOT']=$old;}}
+    public static function withRoot($callback){$old=$_SERVER['DOCUMENT_ROOT']??null;$_SERVER['DOCUMENT_ROOT']=rtrim(ABSPATH,'/\\');try{return $callback();}finally{if($old===null)unset($_SERVER['DOCUMENT_ROOT']);else $_SERVER['DOCUMENT_ROOT']=$old;}}
     public static function storage() {
         $dir=defined('SWIMLOG_PRIVATE_STORAGE_DIR')?(string)SWIMLOG_PRIVATE_STORAGE_DIR:(string)get_option('swimlog_private_storage_dir','');
         if($dir==='')$dir=dirname(realpath(ABSPATH)?:ABSPATH).'/chriss-swim-training-progress-evaluation-private';

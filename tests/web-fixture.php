@@ -23,5 +23,5 @@ if(defined('SWIMLOG_EVALUATION_DIR')) {
 $expiry = time() + 3600;
 $cookie = wp_generate_auth_cookie($owner->ID, $expiry, 'logged_in');
 $otherCookie = wp_generate_auth_cookie($other->ID, $expiry, 'logged_in');
-file_put_contents(getenv('SWIMLOG_WEB_FIXTURE'), json_encode(array('name' => LOGGED_IN_COOKIE, 'cookie' => $cookie, 'entry_cookie'=>wp_generate_auth_cookie(get_user_by('login','synthetic_entry')->ID,$expiry,'logged_in'), 'other' => $otherCookie, 'events'=>get_user_meta($owner->ID,'standalone_event_fixture',true), 'plans'=>get_user_meta($owner->ID,'standalone_planned_fixture',true), 'workouts' => get_user_meta($owner->ID,'standalone_detail_fixture',true))));
+file_put_contents(getenv('SWIMLOG_WEB_FIXTURE'), json_encode(array('name' => LOGGED_IN_COOKIE, 'cookie' => $cookie, 'settings_cookie'=>wp_generate_auth_cookie(get_user_by('login','synthetic_settings')->ID,$expiry,'logged_in'), 'entry_cookie'=>wp_generate_auth_cookie(get_user_by('login','synthetic_entry')->ID,$expiry,'logged_in'), 'other' => $otherCookie, 'events'=>get_user_meta($owner->ID,'standalone_event_fixture',true), 'plans'=>get_user_meta($owner->ID,'standalone_planned_fixture',true), 'workouts' => get_user_meta($owner->ID,'standalone_detail_fixture',true))));
 chmod(getenv('SWIMLOG_WEB_FIXTURE'), 0600);

@@ -7,7 +7,7 @@ const fs=require('node:fs');const assert=require('node:assert/strict');const eng
     const page=await context.newPage();await page.goto('https://swimlog.example.test/');await page.getByRole('button',{name:'Sign in with wordpress.example.test',exact:true}).click();await page.locator('#calendar-title').waitFor();
     for(const width of [1440,1024,768,390,320]) {
       await page.setViewportSize({width,height:900});await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-      const events=page.locator('.events-menu'),workouts=page.locator('.workouts-menu'),tools=page.locator('.tools-menu:not(.events-menu):not(.workouts-menu)');
+      const events=page.locator('.events-menu'),workouts=page.locator('.workouts-menu'),tools=page.locator('.wordpress-menu');
       const anchored=async tree=>{
         await page.waitForFunction(()=>Array.from(document.querySelectorAll('.top-nav > details[open]')).every(tree=>{
           const panel=tree.querySelector(':scope > .tools-links').getBoundingClientRect(),button=tree.querySelector(':scope > summary').getBoundingClientRect(),nav=document.querySelector('.top-nav').getBoundingClientRect();
