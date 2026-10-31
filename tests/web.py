@@ -210,6 +210,35 @@ status, headers, body = request(app, '/?action=plan_transfer', copy_fields, cook
 copied_id = re.search(r'[?&]plan=(\d+)', headers.get('Location',''))[1]
 check(status == 303 and copied_id != created_id and 'plan_result=copied' in headers['Location'])
 check('Synthetic HTTP edited' in request(app, '/?plan='+created_id, cookie=main_cookie)[2])
+# Explicit matching: owner/type filtering, confirmation and unchanged existing matches.
+match_create = {**fields,'title':'Synthetic match HTTP','workout_type':'open_water','pool_length_native':'','pool_course':'','planned_distance':'2500','planned_distance_unit':'m'}
+status, headers, body = request(app, '/?action=plan_save', match_create, cookie=main_cookie, origin=app_origin)
+check(status == 303)
+match_plan = re.search(r'[?&]plan=(\d+)', headers['Location'])[1]
+status, headers, match_body = request(app, '/?match_plan='+match_plan+'&view=week', cookie=main_cookie)
+check(status == 200 and 'no-store' in headers['Cache-Control'] and 'Confirm match' in match_body)
+check('data-candidate-id="'+str(ids['open_water'])+'"' in match_body and 'data-candidate-id="'+str(ids['running'])+'"' not in match_body and 'PRIVATE_NOTES_CANARY' not in match_body)
+def match_value(body, name):
+    form = re.search(r'<form class="plan-match-editor"[^>]*>(.*?)</form>', body, re.S)[1]
+    return form_value(form, name)
+match_fields = {name:match_value(match_body,name) for name in ['plan_id','nonce','revision','date','view','recorded_date','match_page','recorded_choice']}
+check(request(app, '/?action=plan_match', cookie=main_cookie)[0] == 405)
+check(request(app, '/?action=plan_match', match_fields, origin=app_origin)[0] == 401)
+check(request(app, '/?action=plan_match', match_fields, cookie=main_cookie, origin='https://evil.example.test')[0] == 403)
+check(request(app, '/?action=plan_match', {**match_fields,'nonce':'bad'}, cookie=main_cookie, origin=app_origin)[0] == 403)
+check(request(app, '/?action=plan_match', {**match_fields,'recorded_choice':''}, cookie=main_cookie, origin=app_origin)[0] == 422)
+check(request(app, '/?action=plan_match', {**match_fields,'recorded_choice':str(ids['foreign'])+':'+('a'*64)}, cookie=main_cookie, origin=app_origin)[0] == 422)
+check(request(app, '/?action=plan_match', {**match_fields,'user_id':'999'}, cookie=main_cookie, origin=app_origin)[0] == 422)
+check(request(app, '/?match_plan='+str(plans['foreign']), cookie=main_cookie)[0] == 404)
+check(request(app, '/?match_plan='+str(plans['matched']), cookie=main_cookie)[0] == 409)
+check('Confirm match' not in request(app, '/?match_plan='+match_plan)[2])
+status, headers, body = request(app, '/?action=plan_match', match_fields, cookie=main_cookie, origin=app_origin)
+check(status == 303 and 'plan_result=matched' in headers['Location'] and 'view=week' in headers['Location'])
+check(request(app, '/?action=plan_match', match_fields, cookie=main_cookie, origin=app_origin)[0] == 409)
+status, headers, matched_body = request(app, '/?plan='+match_plan, cookie=main_cookie)
+check('View matched recorded workout' in matched_body and 'Match recorded workout</a>' not in matched_body and 'Edit planned workout</a>' not in matched_body)
+status, headers, calendar_matched = request(app, cookie=main_cookie)
+check(re.search(r'class="[^"]*is-matched[^\"]*"[^>]*data-workout-id="'+str(ids['open_water'])+'"',calendar_matched) is not None)
 status, headers, body = request(app, cookie=main_cookie)
 logout_nonce = form_value(body, 'nonce')
 check(request(app, '/?action=logout', {}, cookie=main_cookie, origin=app_origin)[0] == 403)

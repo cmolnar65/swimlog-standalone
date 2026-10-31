@@ -7,6 +7,19 @@ wp_set_password('synthetic-login-only', $owner->ID);
 global $wpdb;
 $wpdb->update($wpdb->users, array('display_name' => '<script>synthetic</script>'), array('ID' => $owner->ID));
 clean_user_cache($owner->ID);
+// Repeated browser/HTTP matching flows reuse one synthetic recorded swim.
+// Reset only plans created by those flows in this disposable database.
+if(defined('SWIMLOG_EVALUATION_DIR')) {
+    require_once SWIMLOG_EVALUATION_DIR.'includes/class-planned-workout.php';
+    require_once SWIMLOG_EVALUATION_DIR.'includes/class-structured-workout-store.php';
+    require_once SWIMLOG_EVALUATION_DIR.'includes/class-planned-structure-link.php';
+    foreach(\SwimLogEvaluation\Planned_Workout::all_for_user($owner->ID)as$plan) {
+        if(strpos($plan->title,'Synthetic match ' )===0&&!empty($plan->completed_workout_id)) {
+            $reset=\SwimLogEvaluation\Planned_Workout::clear_completed_workout($plan->id,$owner->ID);
+            if(is_wp_error($reset))throw new RuntimeException('Synthetic browser match reset failed.');
+        }
+    }
+}
 $expiry = time() + 3600;
 $cookie = wp_generate_auth_cookie($owner->ID, $expiry, 'logged_in');
 $otherCookie = wp_generate_auth_cookie($other->ID, $expiry, 'logged_in');

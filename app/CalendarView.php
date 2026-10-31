@@ -24,6 +24,14 @@ final class CalendarView {
         $includeLand = class_exists('SwimLogEvaluation\\Land_Activity') && \SwimLogEvaluation\Land_Activity::authorized($owner);
         $data = \SwimLogEvaluation\Calendar::for_user($owner, $start->format('Y-m-d'), $end->format('Y-m-d'), $includeLand);
         if (is_wp_error($data)) return $data;
+        // A confirmed match remains visible when plan and swim lie in different views.
+        // Resolve only this owner's explicit links; never infer from dates or distances.
+        $matched=array();
+        if(!empty($data['workouts'])) {
+            foreach(\SwimLogEvaluation\Planned_Workout::all_for_user($owner)as$plan)if(!empty($plan->completed_workout_id))$matched[(int)$plan->completed_workout_id]=true;
+            foreach($data['workouts']as&$row)if(in_array($row['workout_type'],array('pool','open_water'),true)&&isset($matched[(int)$row['id']]))$row['matched_to_plan']=true;
+            unset($row);
+        }
         $days = array();
         for ($cursor=$start; $cursor <= $end; $cursor=$cursor->modify('+1 day')) $days[$cursor->format('Y-m-d')] = array('date'=>$cursor, 'items'=>array());
         foreach (array('workouts','planned_workouts','events') as $kind) {

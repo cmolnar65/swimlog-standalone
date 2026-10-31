@@ -301,3 +301,35 @@ The fixed `return_to=calendar` flag returns to the target day/view; no arbitrary
 return URLs are accepted. Cancelled/rejected drags do not write, and preparation
 failures remain visible without automatic retries. Existing detail links remain
 usable without JavaScript; native anchor dragging is disabled until enhanced.
+
+## Match a recorded swim
+
+Unmatched, unlocked planned swims expose Match recorded workout from their details.
+The responsive, no-JavaScript form defaults to the planned date, allows another
+recorded date and paginates the owner's same-type swims. Already assigned swims
+are omitted; suggestions reuse `Planned_Workout::completion_candidates`. No choice
+is preselected. The swimmer explicitly selects a recorded swim and confirms.
+Empty dates and cancellation perform no write.
+
+`PlanMatch` derives the owner from the real session, requires own-results/manage-own
+capabilities, exact Origin and a plan-specific WordPress nonce, and rejects field
+overrides. Keyed plan/structure/lock and selected-record revisions prevent stale
+confirmation. An owner-scoped MySQL/MariaDB advisory lock serializes competing
+standalone matching requests; it writes no business tables and is released in a
+finally block. Other WordPress interfaces do not participate in this lock; globally
+atomic matching across those interfaces would require an approved plugin change.
+
+All association writes call `Planned_Workout::associate_completed_workout`, retaining
+its owner/type and duplicate-match checks. Existing matches cannot be replaced or
+cleared from this surface. Matching marks the plan completed and causes the existing
+structured-store service to lock the linked prescription. Notes, prescription
+content, recorded swims and performances are not rewritten. The plugin's existing
+clear/delete paths preserve recorded prescription history. Calendar highlighting
+uses this owner's explicit associations even across different planned/recorded
+dates or views. No land activities, measurements, files or Garmin credentials are
+listed. Success returns to the matched plan and preserves calendar date/view.
+
+Synthetic service/HTTP/browser checks cover date browsing, pagination, no preselected
+choice, cancellation, stale and modified records, cross-owner/type rejection,
+duplicate matches, competing match locks, preserved notes/documents/history and
+completed/highlighted states in desktop and mobile layouts.
