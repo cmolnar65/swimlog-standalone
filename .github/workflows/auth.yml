@@ -109,9 +109,9 @@ jobs:
             fi
             for browser in chromium firefox webkit; do
               wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
-              SWIMLOG_BROWSER="$browser" node tests/browser.cjs
               wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
               SWIMLOG_BROWSER="$browser" node tests/entry-browser.cjs
+              SWIMLOG_BROWSER="$browser" node tests/browser.cjs
             done
           fi
           # Older installed builds have no native_distance/duration/normalize_form helpers.
