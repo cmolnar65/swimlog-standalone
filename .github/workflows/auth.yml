@@ -34,7 +34,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '${{ matrix.php }}'
-          extensions: mysqli, openssl
+          extensions: mysqli, openssl, dom, simplexml, zip
           tools: wp-cli
           coverage: none
       - name: Lint
@@ -67,7 +67,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/log-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/planned-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/event-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/calendar-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/workout-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/log-integration.php" --path=/tmp/swimlog-wp
@@ -87,7 +89,9 @@ jobs:
             if curl -s -H 'Host: swimlog.example.test' http://127.0.0.1:8099/ > /dev/null; then break; fi
             sleep 1
           done
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
           python3 tests/web.py
+          python3 tests/entry-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             npm install --no-save --no-package-lock playwright@1.62.1
             npx playwright install --with-deps chromium firefox webkit
@@ -106,6 +110,8 @@ jobs:
             for browser in chromium firefox webkit; do
               wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
               SWIMLOG_BROWSER="$browser" node tests/browser.cjs
+              wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
+              SWIMLOG_BROWSER="$browser" node tests/entry-browser.cjs
             done
           fi
           # Older installed builds have no native_distance/duration/normalize_form helpers.
@@ -120,8 +126,12 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/event-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/structured-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
           python3 tests/web.py
+          python3 tests/entry-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium node tests/browser.cjs
+            wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
+            SWIMLOG_BROWSER=chromium node tests/entry-browser.cjs
           fi

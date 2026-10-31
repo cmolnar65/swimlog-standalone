@@ -1,0 +1,34 @@
+<?php
+if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable test flag required.');
+require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/WorkoutEntry.php';
+use SwimlogStandalone\WorkoutEntry as WE;use SwimLogEvaluation\Workout;use SwimLogEvaluation\Manual_Workout as Manual;
+$user=get_user_by('login','synthetic_entry');$owner=(int)$user->ID;wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=wp_generate_auth_cookie($owner,time()+3600,'logged_in');$checks=0;
+$check=static function($v)use(&$checks){++$checks;if(!$v)throw new RuntimeException('Entry assertion '.$checks.' failed.');};
+$check(WE::ready($owner,'manual')===true&&WE::ready($owner,'import')===true);
+$f=WE::form($owner);$v=$f['values'];$v['workout_date']='2002-01-02';$v['total_distance']='200';$v['duration']='4:00.123';$v['notes']='PRIVATE_ENTRY_NOTES';
+$input=$v+array('sets'=>array(),'payload_complete'=>'1','token'=>$f['token'],'nonce'=>wp_create_nonce('standalone_entry_manual_'.$f['token']));
+$check(is_wp_error(WE::submit($owner,'manual',$input,array(),'https://evil.example.test','https://swimlog.example.test')));
+$check(is_wp_error(WE::submit($owner,'manual',array_replace($input,array('nonce'=>'bad')),array(),'https://swimlog.example.test','https://swimlog.example.test')));
+$check(is_wp_error(WE::submit($owner,'manual',$input+array('workout_id'=>'1'),array(),'https://swimlog.example.test','https://swimlog.example.test')));
+$check(is_wp_error(WE::submit($owner,'manual',array_diff_key($input,array('payload_complete'=>1)),array(),'https://swimlog.example.test','https://swimlog.example.test')));
+$r=WE::submit($owner,'manual',$input,array(),'https://swimlog.example.test','https://swimlog.example.test');$check(isset($r['url']));parse_str(parse_url($r['url'],PHP_URL_QUERY),$q);$id=(int)$q['workout'];
+$w=Workout::get_for_user($id,$owner);$check($w&&$w->source_type==='manual'&&(int)$w->elapsed_time_ms===240123&&(float)$w->total_distance_m===200.0);
+$check(!Workout::imports($id,$owner)&&!Workout::performances($id,$owner));
+$again=WE::submit($owner,'manual',$input,array(),'https://swimlog.example.test','https://swimlog.example.test');$check($again['url']===$r['url']);
+$check(WE::receipt((int)get_user_by('login','synthetic_swimmer')->ID,$f['token'])===false);
+foreach(array(array('workout_date'=>'2026-02-30'),array('workout_time'=>'25:00'),array('pool_length'=>'0'),array('pool_length'=>'1e309'),array('total_distance'=>'not-a-number'),array('course_unit'=>'bad'),array('duration'=>'1:99'),array('location_id'=>'-1'))as$bad)$check(is_wp_error(WE::document($owner,array_replace($v,$bad),array())));
+$foreignLoc=get_user_meta(get_user_by('login','synthetic_swimmer')->ID,'standalone_event_fixture',true)['location'];$check(is_wp_error(WE::document($owner,array_replace($v,array('location_id'=>(string)$foreignLoc)),array())));
+$set=WE::blankSet();$set['repetitions']='2';$set['distance']='100';$set['stroke']='FR';$set['timing']='measured_rep';$set['rep_times']='1:30.123, 1:31.456';$set['rest']='10';
+$d=WE::document($owner,$v,array($set));$check(!is_wp_error($d)&&$d['segments'][0]['rep_times_ms']===array(90123,91456));
+$badSet=$set;$badSet['rep_times']='1:30';$check(is_wp_error(WE::document($owner,$v,array($badSet))));
+$badSet=$set;$badSet['repetitions']='-2';$check(is_wp_error(WE::document($owner,$v,array($badSet))));
+$badSet=$set;$badSet['distance']='10000000';$check(is_wp_error(WE::document($owner,$v,array($badSet))));
+$set['timing']='interval';$set['interval']='2:00';$set['rep_times']='not measured';$d=WE::document($owner,$v,array($set));$check(!is_wp_error($d)&&$d['segments'][0]['rep_times_ms']===array());
+$check(is_wp_error(WE::uploads(array('workout_files'=>array('name'=>array('x.csv'),'type'=>array('text/csv'),'tmp_name'=>array('/etc/passwd'),'error'=>array(0),'size'=>array(1)))) )===false);
+// Structural upload parsing never grants trusted-file access: the plugin still enforces PHP uploads.
+$u=WE::uploads(array('workout_files'=>array('name'=>array('x.csv'),'type'=>array('text/csv'),'tmp_name'=>array('/etc/passwd'),'error'=>array(0),'size'=>array(1))));$check(is_wp_error(\SwimLogEvaluation\Importer::import_upload($owner,$u[0])));
+$check(is_wp_error(WE::uploads(array('workout_files'=>array('name'=>'bad')))));
+$root=$_SERVER['DOCUMENT_ROOT']??null;$_SERVER['DOCUMENT_ROOT']=ABSPATH;$check(!is_wp_error(WE::storage()));$_SERVER['DOCUMENT_ROOT']=$root;
+$old=get_option('swimlog_private_storage_dir');update_option('swimlog_private_storage_dir',ABSPATH);$_SERVER['DOCUMENT_ROOT']=ABSPATH;$check(is_wp_error(WE::storage()));update_option('swimlog_private_storage_dir',$old);if($root===null)unset($_SERVER['DOCUMENT_ROOT']);else $_SERVER['DOCUMENT_ROOT']=$root;
+$user->add_cap('swimlog_upload_workouts',false);wp_set_current_user(0);wp_set_current_user($owner);$check(is_wp_error(WE::ready($owner,'import'))&&WE::ready($owner,'manual')===true);$user->add_cap('swimlog_upload_workouts');wp_set_current_user(0);wp_set_current_user($owner);
+$check(!is_wp_error(Workout::delete($id,$owner)));echo 'Workout entry integration passed: '.$checks." assertions.\n";
