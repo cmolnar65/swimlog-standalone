@@ -25,6 +25,8 @@ const fs=require('node:fs');const assert=require('node:assert/strict');const eng
       assert.equal(await tools.getByRole('link',{name:'Structured workouts',exact:true}).count(),0);
       assert.equal(await tools.getByRole('link',{name:'Personal bests',exact:true}).count(),1);
       await tools.locator(':scope > summary').focus();await page.keyboard.press('Escape');assert(!await tools.evaluate(el=>el.open));
+      await page.keyboard.press('Enter');assert(await tools.evaluate(el=>el.open));await anchored(tools);
+      await page.keyboard.press('Escape');assert(!await tools.evaluate(el=>el.open));
     }
     await page.locator('.workouts-menu>summary').click();await page.getByRole('link',{name:'Add Workout',exact:true}).click();await page.locator('[data-manual-entry]').waitFor();
     await page.getByLabel('Workout date',{exact:true}).fill('2001-03-04');await page.getByLabel('Start time (optional)',{exact:true}).fill('08:00');
