@@ -6,7 +6,7 @@ use SwimLogEvaluation\Importer;
 use SwimLogEvaluation\Recorded_Workout_Structure as Conversion;
 /** Authorized UI adapter; recorded data, rebuilds, conversion and PBs remain plugin-owned. */
 final class WorkoutEditor {
-    public static function publicPreference($owner,$id){$state=Sharing::ownerState($id);return !is_wp_error($state)&&in_array($state['visibility'],array('public','legacy_public'),true);}
+    public static function publicPreference($owner,$id){if(Auth::cookieUser()!==$owner||!Auth::requireCapability($owner))return false;$state=Sharing::ownerState($id);return !is_wp_error($state)&&in_array($state['visibility'],array('public','legacy_public'),true);}
     public static function error($text,$status=422){return new \WP_Error('workout_editor',$text,array('status'=>$status));}
     public static function load($owner,$id){
         require_once __DIR__.'/WorkoutEntry.php';

@@ -51,6 +51,23 @@ check(req('/?action=workout_write',saved|{'make_public':'1'},cookie=f['cookie'])
 check('Reload workout and review current settings' in req('/?action=workout_write',saved,cookie=f['cookie'])[2])
 check(req('/?action=workout_write',form(id)|{'make_public':'1'},cookie=f['cookie'])[0]==303)
 check(req(url)[0]==200)
+# Master consent blocks effective access without changing the stored canonical grant.
+def master(enabled):
+    status,_,body=req('/?screen=swimmer',cookie=f['cookie']);check(status==200)
+    tag=next(tag for tag in re.findall(r'<form\b.*?</form>',body,re.S)if 'value="swimmer_save"' in tag)
+    data={k:html.unescape(v)for k,v in re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)"',tag)}
+    data.update({'birthdate':'','calendar_first_day':'sunday','training_volume_months':'3'})
+    if enabled:data['public_results']='1'
+    check(req('/?action=settings_write',data,cookie=f['cookie'])[0]==303)
+master(False)
+body=req('/?edit_workout='+str(id),cookie=f['cookie'])[2]
+check(re.search(r'name="make_public"[^>]*checked',body) is not None and 'blocks public viewing' in body)
+check(re.search(r'<button[^>]*data-copy-public[^>]*disabled',body) is not None and req(url)[0]==404)
+master(True)
+check(req(url)[0]==200)
+for action in ('plan_match','plan_save','plan_transfer','structured_write','manual_save','workout_upload'):
+    check(req('/?action='+action,{'workout_id':str(id),'plan_id':'1','nonce':'bad'},cookie=f['manager'])[0] in (400,403,404,409,422))
+check(req('/?action=workout_detail&id='+str(id))[0]==401)
 pending=f['ids']['pending'];body=req('/?edit_workout='+str(pending),cookie=f['cookie'])[2]
 check('Confirm previous sharing request' in body and re.search(r'name="make_public"[^>]*checked',body) is None)
 check(req('/?public_workout='+str(pending))[0]==404)

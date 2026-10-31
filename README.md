@@ -429,7 +429,7 @@ because the equivalent plugin handlers are private or tied to admin redirects.
 No plugin changes or direct writes to workout tables are introduced.
 
 Public sharing now uses the plugin-owned Workout_Visibility service; the old
-_standalone_workout_public_<workout_id> key is only a pending request. The app never
+_standalone_workout_public_<workout_id> key is only a pending request. The app never directly
 writes/removes that key and never adopts it automatically. Separate sharing POSTs
 require the owner cookie/capabilities, exact origin, operation nonce, editor HMAC,
 canonical nonce and strict PHP integer revision. A conflict disables actions until

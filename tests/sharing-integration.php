@@ -41,6 +41,11 @@ $in=array('workout_id'=>(string)$id,'operation'=>'metadata','nonce'=>wp_create_n
 $check(is_wp_error(sharing_submit($in+array('make_public'=>'1'))));
 $check(is_wp_error(sharing_submit($in,array('workout_photo_0'=>array('error'=>UPLOAD_ERR_PARTIAL))))&&V::get_for_owner($id)===$state);
 $check(isset(sharing_submit($in)['url'])&&V::get_for_owner($id)===$state);
+// A canonical grandfathered grant remains selected when provisional metadata is absent.
+D::write('update',D::table('workout_visibility'),array('visibility'=>'legacy_public'),array('workout_id'=>$id));
+delete_user_meta($owner,'_standalone_workout_public_'.$id);
+$check(E::publicPreference($owner,$id)&&E::load($owner,(string)$id)['visibility']['visibility']==='legacy_public');
+
 $check((int)V::query_public($owner,array(),1,1)['total']===5&&V::query_public($owner,array(),1,1)['pages']===5);
 $check((int)V::personal_bests($owner,'m')[100]['FR']->duration_ms===60000&&count(V::progression($owner,100,'m','FR'))===1);
 $check(is_wp_error(S::publicWorkout((string)$ids['private']))&&is_wp_error(S::publicWorkout((string)$ids['cycling'])));
