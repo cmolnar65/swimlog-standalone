@@ -1,5 +1,5 @@
 """Disposable HTTPS transport for browser tests; never deploy this file."""
-import http.client, http.server, os, ssl
+import http.client, http.server, os, ssl, socket, select, threading
 if os.environ.get('SWIMLOG_SYNTHETIC_TEST') != '1':
     raise SystemExit('Disposable test flag required')
 class Proxy(http.server.BaseHTTPRequestHandler):
@@ -21,8 +21,25 @@ class Proxy(http.server.BaseHTTPRequestHandler):
     do_GET = forward
     do_POST = forward
     def log_message(self, *args): pass
-server = http.server.ThreadingHTTPServer(('127.0.0.1', 443), Proxy)
+server = http.server.ThreadingHTTPServer(('127.0.0.1', 8443), Proxy)
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 context.load_cert_chain('/tmp/swimlog-cert.pem', '/tmp/swimlog-key.pem')
 server.socket = context.wrap_socket(server.socket, server_side=True)
-server.serve_forever()
+threading.Thread(target=server.serve_forever, daemon=True).start()
+class Tunnel(http.server.BaseHTTPRequestHandler):
+    def do_CONNECT(self):
+        if self.path not in ('wordpress.example.test:443', 'swimlog.example.test:443'):
+            self.send_error(403); return
+        with socket.create_connection(('127.0.0.1', 8443), timeout=15) as upstream:
+            self.send_response(200); self.end_headers()
+            upstream.settimeout(None); self.connection.settimeout(None)
+            peers = (self.connection, upstream)
+            while True:
+                ready, _, _ = select.select(peers, [], [], 30)
+                if not ready: return
+                for source in ready:
+                    data = source.recv(65536)
+                    if not data: return
+                    (upstream if source is self.connection else self.connection).sendall(data)
+    def log_message(self, *args): pass
+http.server.ThreadingHTTPServer(('127.0.0.1', 8088), Tunnel).serve_forever()

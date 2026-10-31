@@ -8,7 +8,7 @@ const { chromium, firefox, webkit } = require('playwright');
   for (const [name, engine] of Object.entries(engines)) {
     const browser = await engine.launch({headless: true});
     try {
-      const context = await browser.newContext({ignoreHTTPSErrors:true});
+      const context = await browser.newContext({ignoreHTTPSErrors:true, proxy:{server:'http://127.0.0.1:8088'}});
       await context.addCookies([{name:fixture.name, value:fixture.cookie, url:'https://wordpress.example.test/', secure:true, httpOnly:true, sameSite:'Lax'}]);
       const posts = []; const navigation = [];
       const page = await context.newPage();
