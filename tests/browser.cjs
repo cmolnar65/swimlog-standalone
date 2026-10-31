@@ -163,6 +163,43 @@ const { chromium, firefox, webkit } = require('playwright');
       assert((await page.locator('.calendar-panel').innerText()).includes(originalTitle+' edited'));
       assert(!(await page.locator('.calendar-panel').innerText()).includes('Unsaved cancellation'));
       console.log(`${name}: create/edit plan, unit/duration round trip, retained invalid input, cancel and responsive form passed.`);
+      // Dedicated Move/Copy controls: date confirmation, cancel, and target calendar.
+      const targetDate=new Date(today+'T12:00:00Z');targetDate.setUTCDate(targetDate.getUTCDate()+2);
+      const target=targetDate.toISOString().slice(0,10);
+      await page.locator('a[data-plan-id="'+createdPlanId+'"]').tap();
+      await page.locator('#workout-dialog .planned-content').waitFor();
+      await page.getByRole('link',{name:'Move planned workout',exact:true}).tap();
+      await page.locator('#plan-action-title').waitFor();
+      for(const width of [1440,768,390,320]) {
+        await page.setViewportSize({width,height:900});
+        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${name}: move form overflow at ${width}`);
+      }
+      await page.getByLabel('Target date',{exact:true}).fill(target);
+      await page.getByRole('button',{name:'Move workout',exact:true}).tap();
+      await page.waitForURL(/plan_result=moved/);
+      assert.equal(new URL(page.url()).searchParams.get('plan'),createdPlanId);
+      assert.equal(new URL(page.url()).searchParams.get('date'),target);
+      await page.getByRole('link',{name:'Copy planned workout',exact:true}).tap();
+      await page.locator('#plan-action-title').waitFor();
+      await page.getByRole('button',{name:'Copy workout',exact:true}).tap();
+      await page.waitForURL(/plan_result=copied/);
+      const copiedPlanId=new URL(page.url()).searchParams.get('plan');
+      assert(copiedPlanId!==createdPlanId);
+      await page.getByRole('link',{name:'Back to calendar',exact:true}).tap();
+      await page.locator('#calendar-title').waitFor();
+      assert.equal(await page.locator('a[data-plan-id="'+createdPlanId+'"]').count(),1);
+      assert.equal(await page.locator('a[data-plan-id="'+copiedPlanId+'"]').count(),1);
+      await page.locator('a[data-plan-id="'+copiedPlanId+'"]').tap();
+      await page.locator('#workout-dialog .planned-content').waitFor();
+      await page.getByRole('link',{name:'Move planned workout',exact:true}).tap();
+      await page.locator('#plan-action-title').waitFor();
+      await page.getByRole('link',{name:'Cancel',exact:true}).tap();
+      await page.locator('#calendar-title').waitFor();
+      await page.getByRole('link',{name:'Today',exact:true}).tap();
+      await page.waitForURL(url=>url.searchParams.get('date')===today);
+      await page.locator('#calendar-title').waitFor();
+      console.log(`${name}: move/copy forms, target date navigation, independent plan IDs, cancel and phone widths passed.`);
+
 
       // Reopening, route/no-GPS states, keyboard activation and retry.
       for(const type of ['open_water','running','walking']) {

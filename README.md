@@ -209,7 +209,7 @@ Notes and raw structured documents are never serialized. The read-only endpoint
 requires a real cookie, own-results capability and a separate session-bound
 `swimlog_planned_detail` nonce; foreign and absent IDs share the same 404.
 No plan status, prescription, match or history is changed. Creation and editing are now available in the standalone calendar; moving and
-copying remain in WordPress tools for the next implementation phase.
+copying are also available through protected standalone date-selection forms.
 
 ## Create and edit planned workouts
 
@@ -258,3 +258,28 @@ and repeats editor integration and HTTP checks on every PHP version, plus Chromi
 flows. This tests the legacy helper interface, not the entire application against
 a v1.2 runtime/schema. Caught failures log only exception class, source basename and
 line number; messages, traces, credentials, submitted values and cookies are omitted.
+
+## Move and copy plans
+
+Planned details provide Move and Copy controls that open responsive, no-JavaScript
+date-selection forms. Targets must be today or a future date. Move is restricted to
+unmatched, unlocked plans with status `planned`; it calls `Planned_Workout::move`
+and retains the same plan ID, instructions, notes and structure link. Copy calls
+`Planned_Workout::duplicate`, including its existing structured-document validation
+and rollback behavior. Matched/locked plans can be copied as independent new plans;
+the original, recorded match and locked prescription remain unchanged. The plugin
+creates a separate unlocked structure for the copy. No ad hoc table writes occur.
+
+Both operations require the real session, own-results/manage-own capabilities,
+exact Origin and operation/plan-specific WordPress nonces. Strict field allowlists
+reject ownership/history overrides; keyed revisions include the source plan,
+structure and lock state. Stale forms require reloading. As with editing, this is
+an optimistic check rather than a transaction spanning other WordPress interfaces.
+Unsupported plugin service methods fail explicitly. Cancellation performs no write.
+Success redirects to the resulting plan on the target calendar date, retaining
+month/week view. Source controls retain calendar context on desktop and mobile.
+
+Synthetic integration, HTTP and browser coverage includes moved IDs/dates, copied
+structure independence, original notes/matches/lock preservation, invalid documents
+without orphan plans, stale/foreign/CSRF rejection, target navigation and cancellation.
+The legacy-admin-helper compatibility run also exercises these operations.

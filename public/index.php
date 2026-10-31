@@ -39,6 +39,16 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if ($action === 'plan_transfer') {
+        if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
+        if (!$owner) { http_response_code(401); exit('Sign in again before moving or copying a plan.'); }
+        require_once dirname(__DIR__).'/app/PlanActions.php';
+        $out=\SwimlogStandalone\PlanActions::submit($owner,wp_unslash($_POST),$_SERVER['HTTP_ORIGIN']??'',$config['app_origin']);
+        if (is_wp_error($out)) { http_response_code((int)($out->get_error_data()['status']??400)); exit(esc_html($out->get_error_message())); }
+        if (isset($out['id'])) { header('Location: '.$config['app_origin'].$out['url'],true,303); exit; }
+        $planActionForm=$out['form'];
+        http_response_code((int)($planActionForm['error']->get_error_data()['status']??422));
+    }
     if ($action === 'plan_save') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
         if (!$owner) { http_response_code(401); exit('Sign in again before saving a planned workout.'); }
@@ -67,14 +77,16 @@ try {
         if (is_wp_error($detail)) wp_send_json(array('error'=>$detail->get_error_message()),(int)($detail->get_error_data()['status']??400));
         wp_send_json(array('html'=>\SwimlogStandalone\WorkoutDetails::render($detail)),200);
     }
-    if (!isset($planForm) && ($action !== '' || !in_array($method, array('GET', 'HEAD'), true))) { http_response_code(404); exit('Not found.'); }
+    if (!isset($planForm) && !isset($planActionForm) && ($action !== '' || !in_array($method, array('GET', 'HEAD'), true))) { http_response_code(404); exit('Not found.'); }
     if ($owner && !Auth::requireCapability($owner)) { http_response_code(403); exit('Your account does not have Swim Log access.'); }
-    $signedIn = $owner > 0 && (isset($planForm)||!isset($_GET['login_error']));
+    $signedIn = $owner > 0 && (isset($planForm)||isset($planActionForm)||!isset($_GET['login_error']));
     if ($signedIn) {
-        $screen=isset($planForm)?'calendar':($_GET['screen']??'calendar');
+        $screen=(isset($planForm)||isset($planActionForm))?'calendar':($_GET['screen']??'calendar');
         if (!is_string($screen)||!in_array($screen,array('calendar','log'),true)) { http_response_code(400); exit('Unknown screen.'); }
         require_once dirname(__DIR__).'/app/CalendarView.php';
-        if (isset($planForm)) {
+        if (isset($planActionForm)) {
+            $returnUrl=$planActionForm['context']['url'];
+        } elseif (isset($planForm)) {
             $returnUrl=$planForm['context']['url'];
         } elseif ($screen==='log') {
             require_once dirname(__DIR__).'/app/WorkoutLog.php';
@@ -83,6 +95,12 @@ try {
         } else {
             $calendar=\SwimlogStandalone\CalendarView::load($owner,$_GET);
             $returnUrl=is_wp_error($calendar)?'/':\SwimlogStandalone\CalendarView::url($calendar['date'],$calendar['view']);
+        }
+        if (isset($_GET['plan_action']) && !isset($planActionForm)) {
+            if ($screen!=='calendar'||isset($_GET['plan'])||isset($_GET['workout'])||isset($_GET['edit_plan'])) { http_response_code(400); exit('Choose one planned workout action.'); }
+            require_once dirname(__DIR__).'/app/PlanActions.php';
+            $planActionForm=\SwimlogStandalone\PlanActions::open($owner,$_GET['source_plan']??null,$_GET['plan_action'],$_GET);
+            if (is_wp_error($planActionForm)) { http_response_code((int)($planActionForm->get_error_data()['status']??400)); exit(esc_html($planActionForm->get_error_message())); }
         }
         if (isset($_GET['edit_plan']) && !isset($planForm)) {
             if ($screen!=='calendar'||isset($_GET['plan'])||isset($_GET['workout'])) { http_response_code(400); exit('Choose one planned workout.'); }

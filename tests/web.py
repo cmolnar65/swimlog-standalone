@@ -165,6 +165,35 @@ check(request(app, '/?edit_plan='+str(plans['foreign']), cookie=main_cookie)[0] 
 check('Save planned workout' not in request(app, '/?edit_plan=new')[2])
 status, headers, editor = request(app, '/?edit_plan='+str(plans['plan']), cookie=main_cookie)
 check(status == 200 and 'PRIVATE_PLAN_NOTES_CANARY' not in editor)
+# Move/copy forms use their own action-bound nonces and preserve calendar view.
+status, headers, transfer = request(app, '/?plan_action=move&source_plan='+created_id+'&view=week', cookie=main_cookie)
+check(status == 200 and 'Move planned workout' in transfer and 'no-store' in headers['Cache-Control'])
+def transfer_value(body, name):
+    form = re.search(r'<form class="plan-action-editor plan-editor"[^>]*>(.*?)</form>', body, re.S)[1]
+    return form_value(form, name)
+move_fields = {name:transfer_value(transfer,name) for name in ['plan_id','operation','nonce','revision','date','view','target_date']}
+from datetime import date, timedelta
+future = (date.fromisoformat(move_fields['target_date'])+timedelta(days=7)).isoformat()
+move_fields['target_date'] = future
+check(request(app, '/?action=plan_transfer', cookie=main_cookie)[0] == 405)
+check(request(app, '/?action=plan_transfer', move_fields, origin=app_origin)[0] == 401)
+check(request(app, '/?action=plan_transfer', move_fields, cookie=main_cookie, origin='https://evil.example.test')[0] == 403)
+check(request(app, '/?action=plan_transfer', {**move_fields,'nonce':'bad'}, cookie=main_cookie, origin=app_origin)[0] == 403)
+status, headers, invalid = request(app, '/?action=plan_transfer', {**move_fields,'target_date':'1900-01-01'}, cookie=main_cookie, origin=app_origin)
+check(status == 422 and '1900-01-01' in invalid and 'Choose today or a future date' in invalid)
+check(request(app, '/?action=plan_transfer', {**move_fields,'user_id':'99'}, cookie=main_cookie, origin=app_origin)[0] == 422)
+status, headers, body = request(app, '/?action=plan_transfer', move_fields, cookie=main_cookie, origin=app_origin)
+check(status == 303 and 'plan_result=moved' in headers['Location'] and 'date='+future in headers['Location'] and 'view=week' in headers['Location'])
+check(request(app, '/?action=plan_transfer', move_fields, cookie=main_cookie, origin=app_origin)[0] == 409)
+check(request(app, '/?plan_action=move&source_plan='+str(plans['matched']), cookie=main_cookie)[0] == 409)
+check(request(app, '/?plan_action=copy&source_plan='+str(plans['foreign']), cookie=main_cookie)[0] == 404)
+status, headers, transfer = request(app, '/?plan_action=copy&source_plan='+created_id+'&view=week', cookie=main_cookie)
+copy_fields = {name:transfer_value(transfer,name) for name in ['plan_id','operation','nonce','revision','date','view','target_date']}
+copy_fields['target_date']=future
+status, headers, body = request(app, '/?action=plan_transfer', copy_fields, cookie=main_cookie, origin=app_origin)
+copied_id = re.search(r'[?&]plan=(\d+)', headers.get('Location',''))[1]
+check(status == 303 and copied_id != created_id and 'plan_result=copied' in headers['Location'])
+check('Synthetic HTTP edited' in request(app, '/?plan='+created_id, cookie=main_cookie)[2])
 status, headers, body = request(app, cookie=main_cookie)
 logout_nonce = form_value(body, 'nonce')
 check(request(app, '/?action=logout', {}, cookie=main_cookie, origin=app_origin)[0] == 403)
