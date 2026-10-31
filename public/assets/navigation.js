@@ -6,7 +6,7 @@
   const position=tree=>{
     const panel=tree.querySelector(':scope > .tools-links');
     if(!matchMedia('(min-width:701px)').matches){panel.style.left='';panel.style.right='';return;}
-    if(!tree.open)return;
+    if(!tree.open){panel.style.left='';panel.style.right='';return;}
     const trigger=tree.querySelector(':scope > summary').getBoundingClientRect(), container=nav.getBoundingClientRect();
     // Anchor horizontally to this trigger, but stay below every wrapped nav row.
     const left=Math.max(12,Math.min(trigger.left,innerWidth-12-panel.getBoundingClientRect().width));
@@ -18,7 +18,7 @@
   if(document.fonts)document.fonts.ready.then(layout);
   const close=tree=>{tree.open=false;tree.querySelectorAll('details[open]').forEach(child=>{child.open=false;});};
   for(const tree of trees) {
-    tree.querySelector(':scope > summary').addEventListener('click',()=>{if(!tree.open)trees.filter(other=>other!==tree).forEach(close);});
+    tree.querySelector(':scope > summary').addEventListener('click',event=>{event.preventDefault();if(tree.open)close(tree);else{trees.filter(other=>other!==tree).forEach(close);tree.open=true;position(tree);}});
     tree.addEventListener('toggle',()=>{if(tree.open){trees.filter(other=>other!==tree).forEach(close);position(tree);}else tree.querySelectorAll('details[open]').forEach(child=>{child.open=false;});});
   }
   document.addEventListener('click',e=>{if(!nav.contains(e.target))trees.forEach(close);});
