@@ -11,11 +11,11 @@ $doc=\SwimlogStandalone\WorkoutEntry::document($owner,$values,array($set));
 $result=M::save($owner,$doc);if(is_wp_error($result))throw new RuntimeException($result->get_error_message());$id=(string)$result['workout_id'];
 function edit_input($owner,$id,$op,$extra=array()){$item=E::load($owner,$id);return array('workout_id'=>$id,'operation'=>$op,'nonce'=>wp_create_nonce('standalone_workout_'.$op.'_'.$id),'revision'=>$item['revision'])+$extra;}
 function edit_submit($owner,$input){return E::submit($owner,$input,array(),'https://swimlog.example.test','https://swimlog.example.test');}
-$before=Workout::get_for_user((int)$id,$owner);$input=edit_input($owner,$id,'metadata',array('location_id'=>'0','notes'=>'Synthetic edited','make_public'=>'1'));
+$before=Workout::get_for_user((int)$id,$owner);$input=edit_input($owner,$id,'metadata',array('location_id'=>'0','notes'=>'Synthetic edited'));
 $check(is_wp_error(E::submit($owner,$input,array(),'https://evil.example.test','https://swimlog.example.test')));
 $check(is_wp_error(edit_submit($owner,array_replace($input,array('nonce'=>'bad')))));
 $check(is_wp_error(edit_submit($owner,$input+array('user_id'=>'1'))));
-$check(isset(edit_submit($owner,$input)['url'])&&E::publicPreference($owner,$id));
+$check(isset(edit_submit($owner,$input)['url'])&&!E::publicPreference($owner,$id));
 $after=Workout::get_for_user((int)$id,$owner);$check($after->notes==='Synthetic edited'&&$after->pool_length_m===$before->pool_length_m&&$after->total_distance_m===$before->total_distance_m);
 $check(is_wp_error(edit_submit($owner,$input)));
 $check(isset(edit_submit($owner,edit_input($owner,$id,'metadata',array('location_id'=>'0','notes'=>'Synthetic edited')))['url'])&&!E::publicPreference($owner,$id));

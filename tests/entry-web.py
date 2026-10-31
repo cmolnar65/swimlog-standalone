@@ -85,13 +85,14 @@ workout_id=re.search(r'href="/\?workout=([0-9]+)',source_body)[1]
 edit_url='/?edit_workout='+workout_id
 def edit_form():
     status,_,body=request(edit_url);check(status==200)
-    data=values(body,'settings-form workout-edit-form')
+    tag=next(tag for tag in re.findall(r'<form\b.*?</form>',body,re.S)if 'value="metadata"' in tag)
+    data=values(tag,'settings-form workout-edit-form')
     return {k:v for k,v in data.items()if k in ('workout_id','operation','nonce','revision')}
 png=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')
-data=edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES','make_public':'1'}
+data=edit_form()|{'location_id':'0','notes':'SYNTHETIC_EDITOR_NOTES'}
 check(request('/?action=workout_write',data,[('workout_photo_0','synthetic.png',png)])[0]==303)
 status,_,body=request(edit_url);check(status==200 and 'SYNTHETIC_EDITOR_NOTES' in body and 'workout-photo-preview' in body)
-check(re.search(r'name="make_public"[^>]*checked',body) is not None)
+check(re.search(r'name="make_public"[^>]*checked',body) is None)
 photo=re.search(r'<img class="workout-photo-preview" src="([^"]+)',body)[1]
 response=opener.open(urllib.request.Request(base+html.unescape(photo),headers={'Host':'swimlog.example.test','Cookie':cookie}))
 check(response.status==200 and response.headers['Content-Type']=='image/png' and response.read()==png)

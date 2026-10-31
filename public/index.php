@@ -13,6 +13,7 @@ try {
     $method = $_SERVER['REQUEST_METHOD'] ?? '';
     $action = $_GET['action'] ?? '';
     if (!is_string($action)) { http_response_code(400); exit('Invalid request.'); }
+    if(isset($_GET['public_workout']))require dirname(__DIR__).'/app/public-workout-route.php';
     if ($action === 'callback') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
         if (($_SERVER['HTTP_ORIGIN'] ?? '') !== $config['wordpress_origin']) Auth::loginFailure($config['app_origin']);
@@ -39,7 +40,7 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
-    if(in_array($action,array('workout_write','workout_photo'),true)||isset($_GET['edit_workout']))require dirname(__DIR__).'/app/workout-editor-route.php';
+    if(in_array($action,array('workout_write','workout_photo','workout_public_link'),true)||isset($_GET['edit_workout']))require dirname(__DIR__).'/app/workout-editor-route.php';
     if (in_array($action,array('settings_write','garmin_write'),true)||in_array($_GET['screen']??null,array('swimmer','locations','garmin_setup','garmin_activities','garmin_measurements','garmin_history'),true)) require dirname(__DIR__).'/app/configuration-route.php';
     if (in_array($action,array('manual_save','workout_upload'),true)||in_array($_GET['screen']??null,array('manual','import'),true)) require dirname(__DIR__).'/app/entry-route.php';
     if (in_array($action,array('structured_write','structured_download','structured_asset'),true)||($_GET['screen']??null)==='structures') require dirname(__DIR__).'/app/structured-route.php';

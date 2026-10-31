@@ -13,6 +13,7 @@ if(defined('SWIMLOG_EVALUATION_DIR')) {
     require_once SWIMLOG_EVALUATION_DIR.'includes/class-planned-workout.php';
     require_once SWIMLOG_EVALUATION_DIR.'includes/class-structured-workout-store.php';
     require_once SWIMLOG_EVALUATION_DIR.'includes/class-planned-structure-link.php';
+    wp_set_current_user($owner->ID);
     foreach(\SwimLogEvaluation\Planned_Workout::all_for_user($owner->ID)as$plan) {
         if(strpos($plan->title,'Synthetic match ' )===0&&!empty($plan->completed_workout_id)) {
             $reset=\SwimLogEvaluation\Planned_Workout::clear_completed_workout($plan->id,$owner->ID);

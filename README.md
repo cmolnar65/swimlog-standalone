@@ -428,13 +428,76 @@ editing/publishing that post remains in WordPress. Post/media transport is adapt
 because the equivalent plugin handlers are private or tied to admin redirects.
 No plugin changes or direct writes to workout tables are introduced.
 
-The Make Workout Public checkbox is a saved future preference only, stored as '1'
-in the owner's user metadata under _standalone_workout_public_<workout_id>;
-unchecked means the key is absent. It never changes public results, REST access,
-post status, private land activity rules or any current visibility checks.
-Deletion clears the preference. Before enabling sharing, the plugin must own a
-canonical per-workout visibility service, adopt this preference deliberately, and
-enforce compatible privacy rules in every public renderer/API. The standalone
-repository must then call that service rather than independently granting access.
+Public sharing now uses the plugin-owned Workout_Visibility service; the old
+_standalone_workout_public_<workout_id> key is only a pending request. The app never
+writes/removes that key and never adopts it automatically. Separate sharing POSTs
+require the owner cookie/capabilities, exact origin, operation nonce, editor HMAC,
+canonical nonce and strict PHP integer revision. A conflict disables actions until
+explicit reload/review. Metadata/photo saves cannot change sharing.
+
 Workout photos retain the existing WordPress attachment storage semantics; the
 editor serves previews through authenticated owner-only application requests.
+
+
+### Canonical public workout sharing
+
+Tested plugin checkpoint: 702f2e51cb9ffbc67e54d12e25de9316dd0ee534
+(1.3-dev, schema 1.5). Runtime feature detection checks every required visibility
+method, installed schema version and Workout_Visibility::ready(). No app migration,
+lifecycle command or provisional fallback runs. Missing services disable sharing;
+public lookups fail closed with the same 404 as private/missing/unsupported records.
+Installing files alone is insufficient: the normal plugin administrator upgrade must
+complete before sharing is available. The test-server operator reports current
+develop installed; CI is not an independent inspection of that server.
+
+Owner controls are available from calendar/log details → Edit Workout (sharing-only
+controls for running/walking). Make Workout Public reflects canonical public or
+legacy_public, independently of effective_public. Share route publicly reflects
+route_public and is cleared/disabled when making private. Neither operation enables
+Public Results or route consent. Global controls are explained and linked to the
+WordPress Swimmer Configuration screen. The pre-existing standalone preferences
+adapter preserves the newer all-sport route setting when saving unrelated fields.
+Explicit pending-request confirmation calls adopt_standalone_preference, with
+routes off. Canonical saves consume pending preferences through plugin services.
+
+Copy Public Link becomes available only after refreshed canonical effective_public.
+Unsaved checkbox changes disable copying. Copy revalidates the editor state and
+current canonical permission on an authenticated same-origin request; stale/revoked
+grants cannot use that control. Clipboard failure selects the link for manual
+copying with accessible feedback. Other applications/tabs require reload after
+conflicts; no newer revision is silently substituted on retry.
+
+Public URL: https://<configured-app-host>/?public_workout=<workout-id>.
+This GET/HEAD-only route runs before protected dispatch and renders exclusively
+Workout_Visibility::get_public. Owner/admin cookies do not bypass public policy.
+Mixed public/management selectors never dispatch mutations. The public template is
+separate from all owner templates and emits no management forms/nonces, notes,
+photos, location labels, imports/paths, device/raw metadata, HR/cadence or health data.
+Swimming, running and walking are labelled separately; this view shows one activity,
+not mixed totals. No public history listing, totals, PB rankings or progression UI
+is added. Eligible counts/pagination/PBs/progression remain in the canonical plugin
+query_public/personal_bests/progression services and are covered by regression tests;
+stored private-history PB flags are never displayed in this app's public page.
+
+Only returned latitude/longitude segments can become SVG paths; gaps are independent
+paths. A null route emits no geometry, JSON, hidden coordinates, preloads or map
+requests. No tiles/provider receives routes. Route consent is independent: old
+swimlog_public_ows_routes authorizes swimming only; swimlog_public_routes covers
+supported sports. Cycling is deferred. Private calendar/measurement access is
+unchanged; a public land projection grants no private-calendar or mutation access.
+
+Every public response (including 404s) is private, no-store; public DTOs/geometry
+are never stored in app transients or persistent caches. Pages restored from browser
+back/forward caches reload policy and clear retained content. Upstream Apache,
+reverse proxy/CDN and WordPress page caches MUST bypass all application HTML,
+especially requests containing public_workout, and honor no-store. Static assets
+may be cached. Purge pre-existing HTML caches when deploying this feature or
+revoking content if any upstream cache previously ignored these directives.
+Third-party social previews, screenshots, copied static posts and existing WordPress
+media URLs cannot be recalled by dynamic revocation.
+
+Sharing never creates/publishes a post. Existing explicit WordPress draft creation
+requires its own capability/nonce and keeps the dynamic Swim Log block. Deletion
+uses Workout::delete, which owns canonical/provisional cleanup. Canonical visibility
+writes occur only in set_for_owner/adopt_standalone_preference. No plugin repository,
+main/release, server or SVN changes are performed by this app work.

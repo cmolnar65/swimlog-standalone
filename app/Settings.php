@@ -66,7 +66,7 @@ final class Settings {
                 require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-ui.php';require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-settings.php';require_once ABSPATH.'wp-admin/includes/template.php';
                 // The plugin owns preference validation and persistence; suppress its admin presentation.
                 $post=$_POST;$request=$_REQUEST;$level=ob_get_level();
-                try {$_POST=wp_slash(array_intersect_key($input,array_flip(self::PREFS))+array('swimlog_privacy_action'=>'save','_wpnonce'=>wp_create_nonce('swimlog_save_privacy')));$_REQUEST=$_POST;ob_start();\SwimLogEvaluation\Admin_Settings::privacy();$markup=ob_get_clean();}
+                try {$_POST=wp_slash(array_intersect_key($input,array_flip(self::PREFS))+array('swimlog_privacy_action'=>'save','_wpnonce'=>wp_create_nonce('swimlog_save_privacy')));if(get_user_meta($owner,'swimlog_public_routes',true)==='1')$_POST['public_routes']='1';$_REQUEST=$_POST;ob_start();\SwimLogEvaluation\Admin_Settings::privacy();$markup=ob_get_clean();}
                 finally {while(ob_get_level()>$level)ob_end_clean();$_POST=$post;$_REQUEST=$request;}
                 if(strpos($markup,'notice notice-error')!==false)return self::error('Enter a valid birth date that is not in the future. Your settings were not saved.');
                 $expected=array('birthdate'=>$input['birthdate'],'calendar_first_day'=>in_array($input['calendar_first_day'],array('saturday','sunday','monday'),true)?$input['calendar_first_day']:'sunday','training_volume_months'=>(string)max(1,min(24,absint($input['training_volume_months']))));

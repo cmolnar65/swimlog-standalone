@@ -16,6 +16,7 @@ if (!get_user_meta($owner->ID, 'standalone_calendar_fixture', true)) {
         $event=\SwimLogEvaluation\Event::save($uid,array('event_name'=>$name,'event_date'=>$day,'distance_value'=>200,'course_unit'=>'m','stroke'=>'BR'));
         if (is_wp_error($event)) throw new RuntimeException('Synthetic event setup failed.');
     }
+    wp_set_current_user($owner->ID);
     $plan=\SwimLogEvaluation\Planned_Workout::save($owner->ID,array('title'=>'Synthetic planned swim','planned_date'=>$day,'planned_distance'=>1000,'planned_duration_minutes'=>30,'workout_type'=>'pool','pool_course'=>'m','workout_instructions'=>'4 × 250 relaxed swimming'));
     if (is_wp_error($plan)) throw new RuntimeException('Synthetic plan setup failed.');
     update_user_meta($owner->ID, 'standalone_calendar_fixture', true);

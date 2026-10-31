@@ -1,7 +1,7 @@
 <?php use SwimlogStandalone\CalendarView as CV; use SwimlogStandalone\WorkoutDetails as WD; use SwimLogEvaluation\Workout; ?>
 <article class="workout-content" data-workout-id="<?php echo esc_attr($detail['id']); ?>">
 <h3><?php echo esc_html($detail['label'].' · Workout #'.$detail['id']); ?></h3>
-<?php if(current_user_can('swimlog_manage_own_workouts')&&in_array($detail['type'],array('pool','open_water'),true)): ?><p><a class="control" href="<?php echo esc_url('/?edit_workout='.(int)$detail['id']); ?>">Edit Workout</a></p><?php endif; ?>
+<?php if(current_user_can('swimlog_manage_own_workouts')&&in_array($detail['type'],array('pool','open_water','running','walking'),true)): ?><p><a class="control" href="<?php echo esc_url('/?edit_workout='.(int)$detail['id']); ?>">Edit Workout</a></p><?php endif; ?>
 <dl class="workout-metrics"><?php foreach($detail['summary'] as $label=>$value): ?><div><dt><?php echo esc_html($label); ?></dt><dd><?php echo esc_html($value); ?></dd></div><?php endforeach; ?></dl>
 <?php if(!empty($detail['timing'])): ?><p class="detail-caption" data-pool-timing><?php echo esc_html($detail['timing']['note']); ?></p><?php endif; ?>
 <?php if($detail['type']!=='pool'): ?><section class="workout-route"><h3>Recorded route</h3><?php if($detail['route']): echo $detail['route']; ?><p class="detail-caption">Recorded GPS only. Gaps remain disconnected; no external map service receives your route.</p><?php else: ?><p>No usable GPS route is recorded for this activity.</p><?php endif; ?></section><?php endif; ?>
