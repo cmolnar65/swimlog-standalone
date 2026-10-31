@@ -148,7 +148,7 @@ const { chromium, firefox, webkit } = require('playwright');
       const originalTitle=`Synthetic ${name} browser plan`;
       await page.getByLabel('Title',{exact:true}).fill(originalTitle);
       await page.getByLabel('Planned distance (optional)',{exact:true}).fill('500');
-      await page.locator('.swimlog-structure-unit select').selectOption('yd');
+      await page.getByLabel('Distance unit',{exact:true}).selectOption('yd');
       await page.getByLabel('Pool length (optional)',{exact:true}).fill('25');
       await page.getByLabel('Pool course',{exact:true}).selectOption('yd');
       await page.getByLabel('Workout instructions (optional)',{exact:true}).fill('Synthetic instructions with a quote " and backslash \\');
