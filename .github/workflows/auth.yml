@@ -106,6 +106,7 @@ jobs:
           python3 tests/settings-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
           python3 tests/sharing-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             npm install --no-save --no-package-lock playwright@1.62.1
@@ -151,6 +152,7 @@ jobs:
           python3 tests/settings-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
           python3 tests/sharing-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
@@ -174,6 +176,7 @@ jobs:
           python3 tests/settings-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
           python3 tests/sharing-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp

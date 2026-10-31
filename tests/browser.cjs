@@ -320,7 +320,7 @@ const { chromium, firefox, webkit } = require('playwright');
       await page.waitForURL(/view=month/);
       assert((await page.locator('.calendar-day').count())>=28);
       await page.locator('.evaluation-menu>summary').tap();
-      assert((await page.getByRole('link',{name:'Personal Bests',exact:true}).getAttribute('href')).startsWith('https://wordpress.example.test/'));
+      assert.equal(await page.getByRole('link',{name:'Personal Bests',exact:true}).getAttribute('href'),'/?screen=bests');
       await page.locator('.evaluation-menu>summary').tap();
       console.log(`${name}: branded calendar, owner privacy, desktop/phone widths, touch details, month/week navigation passed.`);
       await closeDay();await page.locator('.workouts-menu>summary').tap();
