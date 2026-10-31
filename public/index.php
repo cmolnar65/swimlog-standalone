@@ -39,6 +39,24 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
+    if ($action === 'event_save') {
+        if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
+        if (!$owner) { http_response_code(401); exit('Sign in again before saving an event.'); }
+        require_once dirname(__DIR__).'/app/EventWorkflow.php';
+        $out=\SwimlogStandalone\EventWorkflow::submit($owner,wp_unslash($_POST),$_SERVER['HTTP_ORIGIN']??'',$config['app_origin']);
+        if (is_wp_error($out)) { http_response_code((int)($out->get_error_data()['status']??400)); exit(esc_html($out->get_error_message())); }
+        if (isset($out['id'])) { header('Location: '.$config['app_origin'].$out['url'],true,303); exit; }
+        $eventForm=$out['form'];http_response_code((int)($eventForm['error']->get_error_data()['status']??422));
+    }
+    if ($action === 'event_detail') {
+        if (!in_array($method,array('GET','HEAD'),true)) { header('Allow: GET, HEAD'); wp_send_json(array('error'=>'Read-only endpoint.'),405); }
+        if (!$owner) wp_send_json(array('error'=>'Sign in to view event details.'),401);
+        if (!Auth::requireCapability($owner)||!wp_verify_nonce((string)($_SERVER['HTTP_X_SWIMLOG_NONCE']??''),'swimlog_event_detail')) wp_send_json(array('error'=>'Event access denied. Refresh the calendar.'),403);
+        require_once dirname(__DIR__).'/app/EventWorkflow.php';
+        $detail=\SwimlogStandalone\EventWorkflow::detail($owner,$_GET['id']??null);
+        if (is_wp_error($detail)) wp_send_json(array('error'=>$detail->get_error_message()),(int)($detail->get_error_data()['status']??400));
+        wp_send_json(array('html'=>\SwimlogStandalone\EventWorkflow::render($detail)),200);
+    }
     if ($action === 'plan_match') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }
         if (!$owner) { http_response_code(401); exit('Sign in again before matching a workout.'); }
@@ -96,14 +114,20 @@ try {
         if (is_wp_error($detail)) wp_send_json(array('error'=>$detail->get_error_message()),(int)($detail->get_error_data()['status']??400));
         wp_send_json(array('html'=>\SwimlogStandalone\WorkoutDetails::render($detail)),200);
     }
-    if (!isset($planForm) && !isset($planActionForm) && !isset($planMatchForm) && ($action !== '' || !in_array($method, array('GET', 'HEAD'), true))) { http_response_code(404); exit('Not found.'); }
+    if (!isset($eventForm) && !isset($planForm) && !isset($planActionForm) && !isset($planMatchForm) && ($action !== '' || !in_array($method, array('GET', 'HEAD'), true))) { http_response_code(404); exit('Not found.'); }
     if ($owner && !Auth::requireCapability($owner)) { http_response_code(403); exit('Your account does not have Swim Log access.'); }
-    $signedIn = $owner > 0 && (isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
+    $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
-        $screen=(isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
+        $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
         if (!is_string($screen)||!in_array($screen,array('calendar','log'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
+        foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
+        if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
+        if($screen!=='calendar'&&(isset($_GET['event'])||isset($_GET['edit_event'])||isset($_GET['event_result']))) { http_response_code(400); exit('Choose the calendar to view events.'); }
         require_once dirname(__DIR__).'/app/CalendarView.php';
-        if (isset($planMatchForm)) {
+        if (isset($eventForm)) {
+            $returnUrl=$eventForm['context']['url'];
+        } elseif (isset($planMatchForm)) {
             $returnUrl=$planMatchForm['context']['url'];
         } elseif (isset($planActionForm)) {
             $returnUrl=$planActionForm['context']['url'];
@@ -116,6 +140,16 @@ try {
         } else {
             $calendar=\SwimlogStandalone\CalendarView::load($owner,$_GET);
             $returnUrl=is_wp_error($calendar)?'/':\SwimlogStandalone\CalendarView::url($calendar['date'],$calendar['view']);
+        }
+        if ((isset($_GET['edit_event'])||isset($_GET['event_result']))&&!isset($eventForm)) {
+            require_once dirname(__DIR__).'/app/EventWorkflow.php';
+            $operation=isset($_GET['event_result'])?'result':'edit';
+            $eventForm=\SwimlogStandalone\EventWorkflow::open($owner,$_GET['event_result']??$_GET['edit_event'],$operation,$_GET);
+            if (is_wp_error($eventForm)) { http_response_code((int)($eventForm->get_error_data()['status']??400)); exit(esc_html($eventForm->get_error_message())); }
+        }
+        if (isset($_GET['event'])) {
+            require_once dirname(__DIR__).'/app/EventWorkflow.php';$eventDetail=\SwimlogStandalone\EventWorkflow::detail($owner,$_GET['event']);
+            if (is_wp_error($eventDetail)) http_response_code((int)($eventDetail->get_error_data()['status']??400));
         }
         if (isset($_GET['match_plan']) && !isset($planMatchForm)) {
             if ($screen!=='calendar'||isset($_GET['plan'])||isset($_GET['workout'])||isset($_GET['edit_plan'])||isset($_GET['plan_action'])) { http_response_code(400); exit('Choose one planned workout action.'); }

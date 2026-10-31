@@ -2,7 +2,7 @@
 
 Dedicated interface for https://swimlog.cmolnar.com. WordPress at
 `/var/www/cmolnar.com/wp-load.php` remains the identity/session and data authority.
-The calendar and workout log read owner-scoped records through the existing plugin services. Planned workouts can be created/edited through the existing plugin service. No plugin schema,
+The calendar and workout log read owner-scoped records through the existing plugin services. Planned workouts and events can be created/edited, and race results recorded, through existing plugin services. No plugin schema,
 Swim Log source, main-plugin release, SVN or production database copy is involved.
 
 ## Layout
@@ -333,3 +333,31 @@ Synthetic service/HTTP/browser checks cover date browsing, pagination, no presel
 choice, cancellation, stale and modified records, cross-owner/type rejection,
 duplicate matches, competing match locks, preserved notes/documents/history and
 completed/highlighted states in desktop and mobile layouts.
+
+## Events and race results
+
+Calendar events open the shared desktop/mobile dialog and have protected full-page
+fallback links. Add event, Edit event and Record race result use responsive forms
+that also work without JavaScript. Event name/date/time, distance, course, stroke
+and owned location choices reuse `Event::save`; historical dates remain supported.
+Race time (including milliseconds), placement and shared event notes use
+`Event::save_result`. Metadata edits leave results intact; result edits leave race
+metadata intact. Clearing an existing time/placement requires an explicit checkbox.
+No event-delete operation is introduced. Event start times use the plugin's minute
+precision; unchanged legacy second-precision times are not silently rounded.
+
+Reads require a real cookie and own-results access; event notes/results and all
+writes additionally require the plugin's `swimlog_manage_own_events` capability.
+Location selectors and names are owner-scoped and never serialize location notes
+or coordinates. Notes are the existing shared event notes field, not a new store.
+The detail endpoint requires a separate session nonce and is private/no-store.
+Foreign and missing IDs share the same 404. POST writes require exact Origin,
+operation/ID-specific nonces, scalar/size allowlists, canonical IDs, and a keyed
+row revision covering results and notes. An event-scoped advisory lock serializes
+standalone edits/results; other WordPress interfaces do not participate in it.
+All business writes remain in plugin services, with no database copy or migration.
+
+Tests use synthetic events/locations only and cover owned/private reads, foreign
+locations, XSS escaping, historical creation, result precision, stale/invalid/
+CSRF requests, preserved results and metadata, explicit clearing, cancellation,
+desktop/mobile pop-ups and forms, and older admin-helper compatibility.

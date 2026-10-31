@@ -48,7 +48,7 @@ final class CalendarView {
     public static function distance($value, $unit='m') { return $value === null ? 'Distance unavailable' : number_format_i18n((float)$value, (float)$value == floor((float)$value) ? 0 : 1) . ' ' . $unit; }
     private static function item($row, $kind) {
         $labels = array('pool'=>'Pool swim','open_water'=>'Open-water swim','running'=>'Run','walking'=>'Walk');
-        if ($kind === 'events') return array('label'=>$row['event_name'], 'type'=>'event', 'distance'=>self::distance($row['distance_value'], $row['course_unit'] ?: 'm'), 'time'=>$row['event_time'], 'location'=>$row['location'], 'pb'=>false, 'matched'=>false, 'status'=>'Event', 'instructions'=>'');
+        if ($kind === 'events') return array('id'=>(int)$row['id'],'label'=>$row['event_name'], 'type'=>'event', 'distance'=>self::distance($row['distance_value'], $row['course_unit'] ?: 'm'), 'time'=>$row['event_time'], 'location'=>$row['location'], 'pb'=>false, 'matched'=>false, 'status'=>'Event', 'instructions'=>'');
         $plan = $kind === 'planned_workouts';
         $type = $row['workout_type'];
         $distance = $plan ? self::distance($row['planned_distance_m']) : (isset($row['original_distance']) && !empty($row['original_distance_unit']) ? self::distance($row['original_distance'], $row['original_distance_unit']) : self::distance($row['total_distance_m']));

@@ -239,6 +239,55 @@ status, headers, matched_body = request(app, '/?plan='+match_plan, cookie=main_c
 check('View matched recorded workout' in matched_body and 'Match recorded workout</a>' not in matched_body and 'Edit planned workout</a>' not in matched_body)
 status, headers, calendar_matched = request(app, cookie=main_cookie)
 check(re.search(r'class="[^"]*is-matched[^\"]*"[^>]*data-workout-id="'+str(ids['open_water'])+'"',calendar_matched) is not None)
+# Events use their own capability, nonce, metadata and result boundaries.
+events = fixture['events']
+status, headers, event_calendar = request(app, cookie=main_cookie)
+event_nonce = re.search(r'data-event-nonce="([^\"]+)"', event_calendar)[1]
+event_extra = {'X-Swimlog-Nonce':event_nonce}
+status, headers, event_payload = request(app, '/?action=event_detail&id='+str(events['own']), cookie=main_cookie, extra=event_extra)
+check(status == 200 and 'no-store' in headers['Cache-Control'] and '1:23.456' in event_payload and 'PRIVATE_EVENT_NOTES_CANARY' in event_payload)
+check('PRIVATE_LOCATION_NOTES_CANARY' not in event_payload and 'FOREIGN_EVENT_LOCATION' not in event_payload)
+check(request(app, '/?action=event_detail&id='+str(events['own']), extra=event_extra)[0] == 401)
+check(request(app, '/?action=event_detail&id='+str(events['own']), cookie=main_cookie)[0] == 403)
+foreign_event = request(app, '/?action=event_detail&id='+str(events['foreign']), cookie=main_cookie, extra=event_extra)
+missing_event = request(app, '/?action=event_detail&id=99999999', cookie=main_cookie, extra=event_extra)
+check(foreign_event[0] == missing_event[0] == 404 and foreign_event[2] == missing_event[2])
+check(request(app, '/?action=event_detail&id[]=bad', cookie=main_cookie, extra=event_extra)[0] == 400)
+check(request(app, '/?action=event_detail&id='+str(events['own']), {}, cookie=main_cookie, extra=event_extra)[0] == 405)
+status, headers, fallback_event = request(app, '/?event='+str(events['own'])+'&date=2028-02-15&view=week', cookie=main_cookie)
+check(status == 200 and 'Event details' in fallback_event and 'date=2028-02-15&view=week' in html.unescape(fallback_event))
+status, headers, event_form = request(app, '/?edit_event=new&view=week', cookie=main_cookie)
+def event_value(body,name):
+    form = re.search(r'<form class="event-editor plan-editor"[^>]*>(.*?)</form>', body, re.S)[1]
+    return form_value(form,name)
+event_fields = {name:event_value(event_form,name) for name in ['event_id','operation','nonce','revision','date','view']}
+event_fields.update({'event_name':'Synthetic HTTP event','event_date':event_value(event_form,'event_date'),'event_time':'07:30','location_id':str(events['location']),'distance_value':'100','course_unit':'yd','stroke':'BR','notes':'Synthetic HTTP event notes'})
+check(request(app, '/?action=event_save', cookie=main_cookie)[0] == 405)
+check(request(app, '/?action=event_save', event_fields, origin=app_origin)[0] == 401)
+check(request(app, '/?action=event_save', event_fields, cookie=main_cookie, origin='https://evil.example.test')[0] == 403)
+check(request(app, '/?action=event_save', {**event_fields,'nonce':'bad'}, cookie=main_cookie, origin=app_origin)[0] == 403)
+check(request(app, '/?action=event_save', {**event_fields,'location_id':str(events['foreign_location'])}, cookie=main_cookie, origin=app_origin)[0] == 422)
+status, headers, event_invalid = request(app, '/?action=event_save', {**event_fields,'event_date':'2026-02-30'}, cookie=main_cookie, origin=app_origin)
+check(status == 422 and 'Synthetic HTTP event' in event_invalid)
+status, headers, body = request(app, '/?action=event_save', event_fields, cookie=main_cookie, origin=app_origin)
+check(status == 303 and 'event_saved=event' in headers['Location'] and 'view=week' in headers['Location'])
+new_event_id = re.search(r'[?&]event=(\d+)',headers['Location'])[1]
+status, headers, result_form = request(app, '/?event_result='+new_event_id+'&view=week', cookie=main_cookie)
+result_fields = {name:event_value(result_form,name) for name in ['event_id','operation','nonce','revision','date','view']}
+result_fields.update({'result_time':'1:23.456','placement':'2','notes':'Synthetic result notes'})
+check(request(app, '/?action=event_save', {**result_fields,'result_time':'1:99'}, cookie=main_cookie, origin=app_origin)[0] == 422)
+check(request(app, '/?action=event_save', {**result_fields,'user_id':'999'}, cookie=main_cookie, origin=app_origin)[0] == 422)
+status, headers, body = request(app, '/?action=event_save', result_fields, cookie=main_cookie, origin=app_origin)
+check(status == 303 and 'event_saved=result' in headers['Location'])
+check(request(app, '/?action=event_save', result_fields, cookie=main_cookie, origin=app_origin)[0] == 409)
+status, headers, event_form = request(app, '/?edit_event='+new_event_id, cookie=main_cookie)
+edit_event_fields = {**event_fields,**{name:event_value(event_form,name) for name in ['event_id','operation','nonce','revision','date','view']},'event_name':'Synthetic HTTP event edited','notes':'Synthetic result notes'}
+check(request(app, '/?action=event_save', edit_event_fields, cookie=main_cookie, origin=app_origin)[0] == 303)
+status, headers, event_detail = request(app, '/?event='+new_event_id, cookie=main_cookie)
+check('1:23.456' in event_detail and 'Synthetic result notes' in event_detail and 'Synthetic HTTP event edited' in event_detail)
+check(request(app, '/?event_result='+str(events['foreign']), cookie=main_cookie)[0] == 404)
+check(request(app, '/?event='+str(events['own'])+'&edit_event=new', cookie=main_cookie)[0] == 400)
+check('Record race result' not in request(app, '/?event='+str(events['own']))[2])
 status, headers, body = request(app, cookie=main_cookie)
 logout_nonce = form_value(body, 'nonce')
 check(request(app, '/?action=logout', {}, cookie=main_cookie, origin=app_origin)[0] == 403)

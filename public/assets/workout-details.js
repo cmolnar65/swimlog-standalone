@@ -25,37 +25,38 @@
   }
   async function load(source) {
     controller?.abort(); controller = new AbortController(); const current = ++generation;
-    message('Loading workout details…');
+    message('Loading details…');
     try {
-      const url = new URL('/', window.location.origin); const planned=!!source.dataset.planId;
-      url.searchParams.set('action', planned?'planned_detail':'workout_detail'); url.searchParams.set('id', planned?source.dataset.planId:source.dataset.workoutId);
-      const response = await fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal, headers:{'X-Swimlog-Nonce':planned?dialog.dataset.planNonce:dialog.dataset.detailNonce, 'Accept':'application/json'}});
+      const url = new URL('/', window.location.origin); const planned=!!source.dataset.planId, event=!!source.dataset.eventId;
+      url.searchParams.set('action', event?'event_detail':(planned?'planned_detail':'workout_detail')); url.searchParams.set('id', event?source.dataset.eventId:(planned?source.dataset.planId:source.dataset.workoutId));
+      const response = await fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal, headers:{'X-Swimlog-Nonce':event?dialog.dataset.eventNonce:(planned?dialog.dataset.planNonce:dialog.dataset.detailNonce), 'Accept':'application/json'}});
       const data = await response.json();
       if (current !== generation || !dialog.open) return;
       if (!response.ok) {
-        message(response.status===401?'Your session has expired. Close this window and sign in again.':(data.error || 'Workout details are unavailable.'), response.status>=500);
+        message(response.status===401?'Your session has expired. Close this window and sign in again.':(data.error || 'Details are unavailable.'), response.status>=500);
         return;
       }
       // HTML is rendered/escaped by our authenticated PHP template; no raw records are serialized.
       content.innerHTML = data.html;
       // Keep a matched session's fallback return link in the originating calendar view.
-      const links=planned?content.querySelectorAll('a[data-matched-workout],a[data-edit-plan],a[data-plan-action],a[data-match-plan]'):[];
+      const links=(planned||event)?content.querySelectorAll('a[data-matched-workout],a[data-edit-plan],a[data-plan-action],a[data-match-plan],a[data-event-action]'):[];
       for(const link of links) {
         const context=new URL(source.href), destination=new URL(link.href);
         for(const key of ['date','view']) if(context.searchParams.has(key)) destination.searchParams.set(key,context.searchParams.get(key));
         link.href=destination.pathname+destination.search;
       }
     } catch (error) {
-      if (error.name !== 'AbortError' && current === generation && dialog.open) message('Could not load workout details. Please retry.', true);
+      if (error.name !== 'AbortError' && current === generation && dialog.open) message('Could not load details. Please retry.', true);
     }
   }
   document.addEventListener('click', event => {
-    const source = event.target instanceof Element ? event.target.closest('a[data-workout-id],a[data-plan-id]') : null;
+    const source = event.target instanceof Element ? event.target.closest('a[data-workout-id],a[data-plan-id],a[data-event-id]') : null;
     if (!source || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
     if (dialog.open && source === trigger) { close(); return; }
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
-    dialog.querySelector('#workout-dialog-title').textContent=source.dataset.planId?'Planned workout details':'Workout details';
+    dialog.querySelector('#workout-dialog-title').textContent=source.dataset.eventId?'Event details':(source.dataset.planId?'Planned workout details':'Workout details');
+    dialog.querySelector('[data-workout-close]').setAttribute('aria-label',source.dataset.eventId?'Close event details':'Close workout details');
     trigger = source; source.setAttribute('aria-expanded', 'true');
     if (!dialog.open) {
       savedScroll = window.scrollY; document.documentElement.classList.add('workout-dialog-open');
