@@ -1,8 +1,8 @@
 <?php
 if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable test flag required.');
-require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/WorkoutEditor.php';
+require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/WorkoutEditor.php';require_once dirname(__DIR__).'/app/WorkoutEntry.php';
 use SwimlogStandalone\WorkoutEditor as E;use SwimLogEvaluation\Workout;use SwimLogEvaluation\Manual_Workout as M;
-$user=get_user_by('login','synthetic_entry');$owner=(int)$user->ID;wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=wp_generate_auth_cookie($owner,time()+3600,'logged_in');$checks=0;
+$user=get_user_by('login','synthetic_entry');$owner=(int)$user->ID;wp_set_current_user($owner);$user=wp_get_current_user();$_COOKIE[LOGGED_IN_COOKIE]=wp_generate_auth_cookie($owner,time()+3600,'logged_in');$checks=0;
 $check=static function($ok)use(&$checks){++$checks;if(!$ok)throw new RuntimeException('Workout editor assertion '.$checks.' failed.');};
 \SwimlogStandalone\WorkoutEntry::ready($owner,'manual');
 $values=array('workout_date'=>'2001-05-06','workout_time'=>'08:00','location_id'=>'0','pool_length'=>'25','course_unit'=>'m','total_distance'=>'100','duration'=>'2:00','notes'=>'Synthetic editor initial');
