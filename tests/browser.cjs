@@ -157,6 +157,8 @@ const { chromium, firefox, webkit } = require('playwright');
       await edit.tap();await page.locator('#plan-form-title').waitFor();
       await page.getByLabel('Title',{exact:true}).fill('Unsaved cancellation');
       await page.getByRole('link',{name:'Cancel',exact:true}).tap();
+      await page.waitForURL(url=>!url.searchParams.has('edit_plan'));
+      await page.locator('#calendar-title').waitFor();
       assert((await page.locator('.calendar-panel').innerText()).includes(originalTitle+' edited'));
       assert(!(await page.locator('.calendar-panel').innerText()).includes('Unsaved cancellation'));
       console.log(`${name}: create/edit plan, unit/duration round trip, retained invalid input, cancel and responsive form passed.`);
