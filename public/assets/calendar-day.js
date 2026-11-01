@@ -25,7 +25,7 @@
     event.preventDefault();outsideDown=false;source=link.closest('.calendar-day');trigger=link;scroll=window.scrollY;
     dialog.querySelector('#calendar-day-title').textContent=source.getAttribute('aria-label');
     const body=dialog.querySelector('[data-day-items]');
-    for(const entry of Array.from(source.querySelector('.day-items').children)) { entry.hidden=false;entry.draggable=false;body.append(entry); }
+    for(const entry of Array.from(source.querySelector('.day-items').children)) { entry.hidden=false;entry.draggable=false;body.append(entry);if(entry.matches('.type-measurement'))entry.open=true; }
     const actions=dialog.querySelector('[data-day-actions]');actions.replaceChildren();
     const plan=source.querySelector('.plan-day-link');if(plan) actions.append(plan.cloneNode(true));
     const add=document.querySelector('[data-add-event]');if(add){const link=add.cloneNode(true),url=new URL(link.href);url.searchParams.set('event_date',source.dataset.date);link.href=url.pathname+url.search;actions.append(link);}
@@ -35,6 +35,7 @@
   dialog.querySelector('[data-day-close]').addEventListener('click',()=>dialog.close());
   dialog.addEventListener('close',()=>{
     if(!source)return;
+    dialog.querySelectorAll('.type-measurement').forEach(entry=>{entry.open=false;});
     source.querySelector('.day-items').append(...dialog.querySelector('[data-day-items]').children);
     source=null;measure();document.documentElement.classList.remove('workout-dialog-open');
     trigger?.focus({preventScroll:true});window.scrollTo(0,scroll);window.dispatchEvent(new Event('resize'));

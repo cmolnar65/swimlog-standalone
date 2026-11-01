@@ -58,6 +58,7 @@ jobs:
           node tests/comparison-selection.cjs
           node tests/pb-comparison-controls.cjs
           node tests/chart-tooltips.cjs
+          node tests/calendar-day-measurements.cjs
           php tests/release-loader.php
           SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php
           SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php partial
