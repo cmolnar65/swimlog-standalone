@@ -2,7 +2,9 @@
 if (getenv('SWIMLOG_SYNTHETIC_TEST') !== '1') throw new RuntimeException('Disposable test flag required.');
 require_once dirname(__DIR__).'/app/Auth.php';
 require_once dirname(__DIR__).'/app/CalendarView.php';
+require_once dirname(__DIR__).'/app/UnitPreferences.php';
 use SwimlogStandalone\CalendarView as CV;
+use SwimlogStandalone\UnitPreferences as UP;
 $fixture = json_decode(file_get_contents(getenv('SWIMLOG_WEB_FIXTURE')),true);
 $_COOKIE[LOGGED_IN_COOKIE]=$fixture['cookie'];
 $owner=(int)wp_validate_auth_cookie($fixture['cookie'],'logged_in');
@@ -10,6 +12,8 @@ wp_set_current_user($owner);
 $other=(int)get_user_by('login','synthetic_other')->ID;
 $GLOBALS['calendar_checks']=0;
 function calendar_check($value) { ++$GLOBALS['calendar_checks']; if(!$value) throw new RuntimeException('Calendar assertion '.$GLOBALS['calendar_checks'].' failed.'); }
+$oldUnits=get_user_meta($owner,'swimlog_unit_preferences',true);
+update_user_meta($owner,'swimlog_unit_preferences',array('swim_course'=>'yd','running'=>'mi','walking'=>'mi','cycling'=>'km','weight'=>'lb','show_secondary'=>true));
 $calendar=CV::load($owner,array('user'=>$other));
 calendar_check(!is_wp_error($calendar));
 calendar_check(count($calendar['days'])%7===0 && count($calendar['days'])<=42);
@@ -21,6 +25,16 @@ calendar_check(strpos($serialized,'Synthetic planned swim')!==false);
 calendar_check(strpos($serialized,'"label":"Run"')!==false);
 calendar_check(strpos($serialized,'"label":"Walk"')!==false);
 $today=$calendar['today']->format('Y-m-d');
+$todayItems=$calendar['days'][$today]['items'];
+$running=array_values(array_filter($todayItems,function($item){return $item['type']==='running';}))[0];
+$pool=array_values(array_filter($todayItems,function($item){return $item['type']==='pool';}))[0];
+calendar_check($running['distance']==='1.86 mi (3.00 km)');
+calendar_check($pool['distance']==='2,000 m');
+$itemMethod=new ReflectionMethod(CV::class,'item');$itemMethod->setAccessible(true);
+$yard=$itemMethod->invoke(null,array('id'=>1,'workout_type'=>'pool','total_distance_m'=>914.4,'original_distance'=>1000,'original_distance_unit'=>'yd','elapsed_time_ms'=>null,'location'=>null,'has_personal_best'=>false,'matched_to_plan'=>false),'workouts',$owner);
+calendar_check($yard['distance']==='1,000 yd');
+calendar_check(UP::measurementValue('weight',70,'kg',$owner)==='154.3 lb (70.0 kg)');
+calendar_check(UP::measurementValue('bone_mass',2.5,'kg',$owner)==='5.5 lb (2.5 kg)');
 $week=array_values(array_filter($calendar['weeks'],function($w)use($today){return $w['start']<=$today&&$w['end']>=$today;}))[0];
 calendar_check((float)$week['distance_m']===4500.0);
 calendar_check((float)$week['running_distance_m']===3000.0 && (int)$week['walking_distance_samples']===0);
@@ -37,6 +51,7 @@ foreach(array('sunday'=>0,'monday'=>1,'saturday'=>6) as $first=>$weekday){
     calendar_check(count($weekView['days'])===7 && (int)$weekView['start']->format('w')===$weekday);
 }
 update_user_meta($owner,'swimlog_calendar_first_day',$old);
+if($oldUnits===false) delete_user_meta($owner,'swimlog_unit_preferences'); else update_user_meta($owner,'swimlog_unit_preferences',$oldUnits);
 calendar_check(CV::distance(null)==='Distance unavailable' && CV::distance(0)==='0 m');
 $installed=get_option('swimlog_db_version'); update_option('swimlog_db_version','0');
 calendar_check(is_wp_error(CV::load($owner,array()))); update_option('swimlog_db_version',$installed);

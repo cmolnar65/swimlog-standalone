@@ -105,8 +105,8 @@ uses a seven-column grid; phones use a date agenda with native expandable entrie
 Swimming, running and walking totals remain separate and come from the plugin's
 weekly summary. No copied calculation/persistence layer or database migration is
 introduced. An incomplete installed schema produces a controlled error; the app
-does not run upgrades. Measurements and editing are later phases, with existing
-WordPress pages linked from a capability-filtered tools menu in the meantime.
+does not run upgrades. Editing and private measurement views use the
+capability-filtered navigation and existing plugin services.
 
 See [branding provenance](docs/BRANDING.md) and [carried-forward requirements](docs/ROADMAP.md).
 Tests activate the pinned plugin only in a disposable WordPress database. Synthetic
@@ -114,6 +114,19 @@ mixed-owner/swim/land/event/plan fixtures cover owner isolation, separate totals
 null/zero distances, leap February, all week starts and schema errors. Browser tests
 cover real authentication plus calendar navigation, touch details and no horizontal
 overflow at 1440, 768, 390 and 320 CSS pixels in Chromium, Firefox and WebKit.
+
+### Calendar display units
+
+Recorded pool and open-water distances keep their stored meter or yard course on
+calendar entries and swim details; swimmer unit preferences never convert or
+combine those course-specific swims. Running and walking calendar distances use
+canonical meters with the installed plugin's per-swimmer mile/kilometer
+preference and optional alternate display. Private weight, bone-mass and
+muscle-mass measurements use canonical kilograms with the plugin's
+pound/kilogram preference. Other measurement values keep their service units.
+Formatting is display-only; no workout or measurement data is rewritten. If an
+older installed plugin lacks the unit-formatting service, the calendar retains
+its existing source-unit display until the updated plugin is installed.
 
 ## Automatic authentication handoff
 

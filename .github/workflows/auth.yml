@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
         with:
           repository: cmolnar65/swim-log-evaluation
-          ref: 8aa564cc8935cd742a996815fdc92b8a37681656
+          ref: 9ab24e495e00e458188e41f58f10a67b4799ec2f
           path: plugin-reference
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
         with:

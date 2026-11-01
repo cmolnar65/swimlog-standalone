@@ -37,7 +37,7 @@ final class CalendarView {
         foreach (array('workouts','planned_workouts','events') as $kind) {
             foreach ($data[$kind] ?? array() as $row) {
                 $key = $kind === 'workouts' ? substr($row['workout_start'],0,10) : ($kind === 'events' ? $row['event_date'] : $row['planned_date']);
-                if (isset($days[$key])) $days[$key]['items'][] = self::item($row, $kind);
+                if (isset($days[$key])) $days[$key]['items'][] = self::item($row, $kind, $owner);
             }
         }
         require_once __DIR__.'/CalendarMeasurements.php';
@@ -50,12 +50,19 @@ final class CalendarView {
     }
     public static function url($date, $view) { return '/?' . http_build_query(array('date'=>$date->format('Y-m-d'), 'view'=>$view)); }
     public static function distance($value, $unit='m') { return $value === null ? 'Distance unavailable' : number_format_i18n((float)$value, (float)$value == floor((float)$value) ? 0 : 1) . ' ' . $unit; }
-    private static function item($row, $kind) {
+    private static function item($row, $kind, $owner) {
         $labels = array('pool'=>'Pool swim','open_water'=>'Open-water swim','running'=>'Run','walking'=>'Walk');
         if ($kind === 'events') return array('id'=>(int)$row['id'],'label'=>$row['event_name'], 'type'=>'event', 'distance'=>self::distance($row['distance_value'], $row['course_unit'] ?: 'm'), 'time'=>$row['event_time'], 'location'=>$row['location'], 'pb'=>false, 'matched'=>false, 'status'=>'Event', 'instructions'=>'');
         $plan = $kind === 'planned_workouts';
         $type = $row['workout_type'];
-        $distance = $plan ? self::distance($row['planned_distance_m']) : (isset($row['original_distance']) && !empty($row['original_distance_unit']) ? self::distance($row['original_distance'], $row['original_distance_unit']) : self::distance($row['total_distance_m']));
+        if ($plan) $distance=self::distance($row['planned_distance_m']);
+        elseif (in_array($type,array('running','walking'),true)) {
+            require_once __DIR__.'/UnitPreferences.php';
+            $distance=UnitPreferences::landDistance($row['total_distance_m']??null,$type,$owner,$row['original_distance']??null,$row['original_distance_unit']??'m');
+        } else {
+            // Swim records retain their recorded meter/yard course; no preference conversion is applied.
+            $distance=isset($row['original_distance'])&&!empty($row['original_distance_unit'])?self::distance($row['original_distance'],$row['original_distance_unit']):self::distance($row['total_distance_m']);
+        }
         $duration = $plan ? $row['planned_duration_ms'] : $row['elapsed_time_ms'];
         return array('id'=>(int)$row['id'],'recorded'=>!$plan,'move_candidate'=>$plan&&($row['status']??'')==='planned'&&empty($row['completed_workout_id']),'label'=>$plan ? ($row['title'] ?: 'Planned swim') : ($labels[$type] ?? 'Workout'), 'type'=>$plan ? 'plan' : $type, 'distance'=>$distance, 'time'=>$duration !== null ? \SwimLogEvaluation\Workout::format_duration($duration) : null, 'location'=>$plan ? null : $row['location'], 'pb'=>!empty($row['has_personal_best']), 'matched'=>!empty($row['matched_to_plan']), 'status'=>$plan ? ucfirst($row['status']) : 'Recorded', 'instructions'=>$plan ? $row['workout_instructions'] : '');
     }

@@ -65,7 +65,10 @@ $recorded=WD::load($owner,$ids['pool']);
 detail_check($recorded['summary']['Recorded moving time']==='28:20.00'&&$recorded['summary']['Calculated moving time']==='29:15.00');
 detail_check((int)\SwimLogEvaluation\Workout::get_for_user($ids['pool'],$owner)->moving_time_ms===1700000);
 \SwimLogEvaluation\Database::write('update',\SwimLogEvaluation\Database::table('workouts'),array('moving_time_ms'=>null),array('id'=>$ids['pool']));
-$run=WD::load($owner,$ids['running']); detail_check(!is_wp_error($run) && $run['summary']['Environment']==='Unknown');
+$oldUnits=get_user_meta($owner,'swimlog_unit_preferences',true);
+update_user_meta($owner,'swimlog_unit_preferences',array('swim_course'=>'yd','running'=>'mi','walking'=>'mi','cycling'=>'km','weight'=>'lb','show_secondary'=>true));
+$nativePool=WD::load($owner,$ids['pool']); detail_check(!is_wp_error($nativePool) && $nativePool['summary']['Distance']==='2,000 m');
+$run=WD::load($owner,$ids['running']); detail_check(!is_wp_error($run) && $run['summary']['Environment']==='Unknown' && $run['summary']['Distance']==='1.86 mi (3.00 km)');
 detail_check(substr_count($run['route'],'<polyline')===2);
 detail_check($run['timing']===null&&!isset($run['summary']['Calculated moving time']));
 detail_check(strpos($run['route'],'style=')===false && strpos($run['route'],'10.001')===false);
@@ -81,4 +84,5 @@ foreach(array(null,array('bad'),0,-1,'1 OR 1=1') as $id) detail_check(is_wp_erro
 $user->add_cap('swimlog_manage_own_workouts',false); wp_set_current_user(0); wp_set_current_user($owner);
 detail_check(is_wp_error(WD::load($owner,$ids['running'])));
 $user->add_cap('swimlog_manage_own_workouts',true); wp_set_current_user(0); wp_set_current_user($owner);
+if($oldUnits===false) delete_user_meta($owner,'swimlog_unit_preferences'); else update_user_meta($owner,'swimlog_unit_preferences',$oldUnits);
 echo 'Workout detail integration passed: '.$GLOBALS['detail_checks']." assertions.\n";

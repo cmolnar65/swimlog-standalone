@@ -23,9 +23,11 @@ final class WorkoutDetails {
         if (count($laps)>2000 || count($lengths)>5000 || count($points)>50000) return new \WP_Error('detail_large','This workout is too large for the pop-up. Please use WordPress tools to view it.',array('status'=>413));
         $labels=array('pool'=>'Pool swim','open_water'=>'Open-water swim','running'=>'Run','walking'=>'Walk');
         require_once __DIR__.'/CalendarView.php';
+        require_once __DIR__.'/UnitPreferences.php';
+        $distance=in_array($type,array('running','walking'),true)?UnitPreferences::landDistance($workout->total_distance_m??null,$type,$owner,$workout->original_distance??null,$workout->original_distance_unit??'m'):(isset($workout->original_distance)&&!empty($workout->original_distance_unit)?CalendarView::distance($workout->original_distance,$workout->original_distance_unit):CalendarView::distance($workout->total_distance_m));
         $summary=array(
             'Start'=>(string)$workout->workout_start,
-            'Distance'=>isset($workout->original_distance)&&!empty($workout->original_distance_unit)?CalendarView::distance($workout->original_distance,$workout->original_distance_unit):CalendarView::distance($workout->total_distance_m),
+            'Distance'=>$distance,
             'Elapsed time'=>Workout::format_duration($workout->elapsed_time_ms),
             'Recorded moving time'=>Workout::format_duration($workout->moving_time_ms),
         );
