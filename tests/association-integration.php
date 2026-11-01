@@ -6,6 +6,7 @@ $f=json_decode(file_get_contents('/tmp/swimlog-associations.json'),true);$owner=
 $check=static function($v)use(&$checks){++$checks;if(!$v)throw new RuntimeException('Association assertion '.$checks.' failed.');};
 function unlink_input($owner,$id,$op){$s=A::forPlan($owner,$id);return array('plan_id'=>(string)$id,'workout_id'=>(string)$s['workout_id'],'operation'=>$op,'nonce'=>wp_create_nonce('standalone_unlink_'.$op.'_'.$id),'revision'=>$s['revision'],'return_to'=>'plan','confirm'=>'1');}
 function unlink_submit($owner,$in){return A::submit($owner,$in,'https://swimlog.example.test','https://swimlog.example.test');}
+$check(A::ready($owner)===true);
 $a=$f['pairs']['pool'];$b=$f['pairs']['open_water'];$before=serialize(W::get_for_user($a['workout'],$owner));$doc=get_post($a['structure'])->post_content;
 $in=unlink_input($owner,$a['plan'],'structure');
 foreach(array('nonce','revision','confirm')as$key){$bad=$in;unset($bad[$key]);$check(is_wp_error(unlink_submit($owner,$bad)));}
