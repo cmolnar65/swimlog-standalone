@@ -7,6 +7,7 @@ permissions:
 jobs:
   integration:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -142,7 +143,7 @@ jobs:
               wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
-              SWIMLOG_BROWSER="$browser" node tests/analytics-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/analytics-browser.cjs
               SWIMLOG_BROWSER="$browser" node tests/volume-delete-browser.cjs
               wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
               SWIMLOG_BROWSER="$browser" node tests/association-browser.cjs
