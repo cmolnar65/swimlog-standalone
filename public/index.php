@@ -43,7 +43,8 @@ try {
     if(in_array($action,array('association_unlink','plan_delete'),true))require dirname(__DIR__).'/app/association-route.php';
     if(in_array($action,array('workout_write','workout_photo','workout_public_link'),true)||isset($_GET['edit_workout']))require dirname(__DIR__).'/app/workout-editor-route.php';
     if (in_array($action,array('settings_write','garmin_write'),true)||in_array($_GET['screen']??null,array('swimmer','locations','garmin_setup','garmin_activities','garmin_measurements','garmin_history'),true)) require dirname(__DIR__).'/app/configuration-route.php';
-    if (in_array($action,array('manual_save','workout_upload'),true)||in_array($_GET['screen']??null,array('manual','import'),true)) require dirname(__DIR__).'/app/entry-route.php';
+    if(in_array($action,array('pdf_upload','pdf_import'),true)||($_GET['screen']??null)==='training_pdf')require dirname(__DIR__).'/app/training-pdf-route.php';
+    if (in_array($action,array('manual_save','manual_update','workout_upload'),true)||in_array($_GET['screen']??null,array('manual','import'),true)) require dirname(__DIR__).'/app/entry-route.php';
     if (in_array($action,array('structured_write','structured_download','structured_asset'),true)||($_GET['screen']??null)==='structures') require dirname(__DIR__).'/app/structured-route.php';
     if ($action === 'event_save') {
         if ($method !== 'POST') { http_response_code(405); header('Allow: POST'); exit('POST required.'); }

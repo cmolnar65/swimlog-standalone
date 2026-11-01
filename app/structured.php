@@ -5,6 +5,7 @@ use SwimLogEvaluation\Structured_Workout_FIT as SF;
 $base=SW::url();
 ?>
 <section class="calendar-panel workout-page structured-page" aria-labelledby="structures-title"><div class="workout-page-heading"><h2 id="structures-title"><?php echo isset($structureForm)?($structureForm['id']==='new'?'Add Structured Workout':'Edit Structured Workout'):(isset($structureDetail)?'Structured Workout':'Structured Workouts'); ?></h2><a class="control" href="<?php echo esc_url($base); ?>">List Structured Workouts</a><?php if(!isset($structureForm)): ?><a class="control" href="<?php echo esc_url(SW::url('new',true)); ?>">Add Structured Workout</a><?php endif; ?></div>
+<?php if(isset($_GET['pdf_imported'])): ?><p role="status">Training plan imported into your private structured workout library.</p><?php endif; ?>
 <?php if(isset($_GET['structure_saved'])): ?><p class="save-notice" role="status">Structured workout updated.</p><?php endif; ?>
 <?php if(isset($structureError)): ?><p role="alert"><?php echo esc_html($structureError->get_error_message()); ?></p>
 <?php elseif(isset($structureForm)): $f=$structureForm; ?>
