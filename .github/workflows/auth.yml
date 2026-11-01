@@ -141,6 +141,9 @@ jobs:
           python3 tests/analytics-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
           python3 tests/comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/session-analysis-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
@@ -216,6 +219,9 @@ jobs:
           python3 tests/analytics-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
           python3 tests/comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/session-analysis-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
@@ -262,6 +268,9 @@ jobs:
           python3 tests/analytics-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
           python3 tests/comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/session-analysis-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
