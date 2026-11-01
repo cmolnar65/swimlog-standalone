@@ -47,13 +47,15 @@ def pdf(lines):
  objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Length '+str(len(content))+' >>\nstream\n'+content+'\nendstream'];out=b'%PDF-1.4\n';offsets=[0]
  for i,obj in enumerate(objects,1):offsets.append(len(out));out+=(str(i)+' 0 obj\n'+obj+'\nendobj\n').encode()
  xref=len(out);out+=('xref\n0 6\n0000000000 65535 f \n'+''.join('%010d 00000 n \n'%i for i in offsets[1:])+'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+str(xref)+'\n%%EOF').encode();return out
-payload=pdf(['Workout 1','4 x 100 yards free','Total: 400 yards','Workout 2','100 meters free','Total: 100 meters'])
+payload=pdf(['Workout 1: Synthetic '+uuid.uuid4().hex,'4 x 100 yards free','Total: 400 yards','Workout 2','100 meters free','Total: 100 meters'])
 s,h,b=request('/?screen=training_pdf');check(s==200 and 'Import Training Plan PDF' in b);v=values(b,'settings-form');v['acknowledge']='1'
 check(request('/?action=pdf_upload',v,[('training_pdf','wrong.txt',payload)])[0]==422);check(request('/?action=pdf_upload',v,[('training_pdf','synthetic.pdf',b'not a pdf')])[0]==422)
 s,h,b=request('/?action=pdf_upload',v,[('training_pdf','synthetic.pdf',payload)]);check(s==303);path=follow(h);s,h,b=request(path);check(s==200 and 'Private extracted text preview' in b and '4 x 100 yards free' in b);check('no-store' in h['Cache-Control']);check(request(path,auth=False)[0]==401)
 v=values(b,'pdf-review');v.update(name='Synthetic standalone PDF plan');doc=json.loads(v['reviews[1][document]']);check(doc['unit']=='yd');v.update({'swimlog_pdf_selected[]':'1','reviews[1][total]':'400','reviews[1][unit]':'yd','reviews[1][reviewed]':'1','payload_complete':'1'})
 check(request('/?action=pdf_import',dict(v,nonce='bad'))[0]==403);check(request('/?action=pdf_import',dict(v,revision='stale'))[0]==409);bad=v.copy();bad.pop('payload_complete');check(request('/?action=pdf_import',bad)[0]==422);bad=v.copy();bad.pop('reviews[1][reviewed]');check(request('/?action=pdf_import',bad)[0]==422);bad=v.copy();bad['reviews[1][total]']='999';check(request('/?action=pdf_import',bad)[0]==422)
-s,h,b=request('/?action=pdf_import',v);check(s==303 and 'pdf_imported=1' in h['Location']);check(request('/?action=pdf_import',v)[0]==303);s,h,b=request(follow(h));check(s==200 and 'Training plan imported' in b);check('PRIVATE_' not in b)
+s,h,b=request('/?action=pdf_import',v)
+if s!=303: raise AssertionError('Synthetic PDF import status '+str(s)+' '+str(re.findall(r'<p role="alert">(.*?)</p>',b)))
+check(s==303 and 'pdf_imported=1' in h['Location']);check(request('/?action=pdf_import',v)[0]==303);s,h,b=request(follow(h));check(s==200 and 'Training plan imported' in b);check('PRIVATE_' not in b)
 # Same source reupload must not create another collection.
 s,h,b=request('/?screen=training_pdf');u=values(b,'settings-form');u['acknowledge']='1';s,h,b=request('/?action=pdf_upload',u,[('training_pdf','synthetic.pdf',payload)]);s,h,b=request(follow(h));fresh=values(b,'pdf-review');v.update(token=fresh['token'],nonce=fresh['nonce'],revision=fresh['revision']);s,h,b=request('/?action=pdf_import',v);check(s==422 and 'already been imported' in b)
 print('Manual editing/PDF HTTP: '+str(count)+' assertions passed.')
