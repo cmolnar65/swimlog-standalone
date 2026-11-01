@@ -47,7 +47,9 @@ final class WorkoutDetails {
             $route=\SwimLogEvaluation\Admin_Workouts::activity_route_svg($points);
             $route=wp_kses($route,array('svg'=>array('class'=>true,'viewbox'=>true,'role'=>true,'aria-label'=>true),'line'=>array('x1'=>true,'y1'=>true,'x2'=>true,'y2'=>true,'stroke'=>true,'stroke-width'=>true,'opacity'=>true),'polyline'=>array('points'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true,'vector-effect'=>true),'circle'=>array('cx'=>true,'cy'=>true,'r'=>true,'fill'=>true,'stroke'=>true,'stroke-width'=>true),'text'=>array('x'=>true,'y'=>true,'font-size'=>true,'font-weight'=>true)));
         }
-        return array('id'=>(int)$id,'type'=>$type,'label'=>$labels[$type],'summary'=>$summary,'timing'=>$timing,'laps'=>$laps,'lengths'=>$lengths,'route'=>$route,'performances'=>$type==='pool'?Workout::performances((int)$id,$owner):array(),'analytics'=>$type==='open_water'?Workout::open_water_analytics((int)$id,$owner):array());
+        require_once __DIR__.'/WorkoutAssociations.php';
+        $association=current_user_can('swimlog_manage_own_workouts')?WorkoutAssociations::forWorkout($owner,(int)$id):null;
+        return array('association'=>$association,'id'=>(int)$id,'type'=>$type,'label'=>$labels[$type],'summary'=>$summary,'timing'=>$timing,'laps'=>$laps,'lengths'=>$lengths,'route'=>$route,'performances'=>$type==='pool'?Workout::performances((int)$id,$owner):array(),'analytics'=>$type==='open_water'?Workout::open_water_analytics((int)$id,$owner):array());
     }
     /** Display-only pool estimate. Laps and lengths overlap, so never add both. */
     public static function poolTiming($elapsed,$laps,$lengths) {

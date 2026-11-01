@@ -29,6 +29,7 @@ if($signedIn) {
 <?php if($signedIn): ?>
 <section class="welcome-strip"><div><p class="eyebrow">MAKE EVERY LENGTH COUNT</p><h1 class="greeting">Welcome, <?php echo esc_html(wp_get_current_user()->display_name); ?></h1><p>Your sessions, plans and events. One clear view.</p></div><img class="brand-banner" src="/assets/brand/banner.png" width="1544" height="500" alt="Chris’s Swim Training Progress and Evaluation"></section>
 <?php if(($_GET['entry_saved']??null)==='manual'): ?><p class="save-notice" role="status">Manual workout saved.</p><?php endif; ?>
+<?php if(isset($_GET['association_unlinked'])): ?><p class="save-notice" role="status">Workout association removed. Both records were kept.</p><?php endif; ?>
 <?php if(isset($_GET['workout_deleted'])): ?><p class="save-notice" role="status">Workout deleted. Personal bests were recalculated.</p><?php endif; ?>
 <?php if(isset($_GET['saved'])): ?><p class="save-notice" role="status">Planned workout saved. Any linked structured prescription remains unchanged.</p><?php endif; ?>
 <?php if(isset($_GET['plan_result'])&&in_array($_GET['plan_result'],array('moved','copied','matched'),true)): ?><p class="save-notice" role="status">Planned workout <?php echo esc_html($_GET['plan_result']); ?>.</p><?php endif; ?>

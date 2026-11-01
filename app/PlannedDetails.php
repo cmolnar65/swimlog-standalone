@@ -44,7 +44,9 @@ final class PlannedDetails {
                 else $structure=array('id'=>(int)$linked['id'],'title'=>$linked['title'],'text'=>$text);
             }
         } else $structureMessage='Workout-management access is required to view structured prescriptions.';
-        return array('id'=>(int)$id,'title'=>$plan->title?:'Planned swim','date'=>$plan->planned_date,'summary'=>$summary,'editable'=>$editable,'matchable'=>$editable&&$plan->status==='planned'&&is_callable(array('SwimLogEvaluation\\Planned_Workout','associate_completed_workout')),'movable'=>$editable&&$plan->status==='planned'&&is_callable(array('SwimLogEvaluation\\Planned_Workout','move')),'copyable'=>current_user_can('swimlog_manage_own_workouts')&&!is_wp_error($linked??null)&&is_callable(array('SwimLogEvaluation\\Planned_Workout','duplicate')),'instructions'=>(string)$plan->workout_instructions,'match'=>$match,'match_missing'=>!empty($plan->completed_workout_id)&&!$match,'structure'=>$structure,'structure_message'=>$structureMessage);
+        require_once __DIR__.'/WorkoutAssociations.php';
+        $association=current_user_can('swimlog_manage_own_workouts')?WorkoutAssociations::forPlan($owner,(int)$id):null;
+        return array('association'=>$association,'id'=>(int)$id,'title'=>$plan->title?:'Planned swim','date'=>$plan->planned_date,'summary'=>$summary,'editable'=>$editable,'matchable'=>$editable&&$plan->status==='planned'&&is_callable(array('SwimLogEvaluation\\Planned_Workout','associate_completed_workout')),'movable'=>$editable&&$plan->status==='planned'&&is_callable(array('SwimLogEvaluation\\Planned_Workout','move')),'copyable'=>current_user_can('swimlog_manage_own_workouts')&&!is_wp_error($linked??null)&&is_callable(array('SwimLogEvaluation\\Planned_Workout','duplicate')),'instructions'=>(string)$plan->workout_instructions,'match'=>$match,'match_missing'=>!empty($plan->completed_workout_id)&&!$match,'structure'=>$structure,'structure_message'=>$structureMessage);
     }
     public static function render($detail,$returnUrl=null) {
         if($returnUrl===null) $returnUrl=CalendarView::url(new \DateTimeImmutable($detail['date'],wp_timezone()),'month');

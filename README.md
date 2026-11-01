@@ -520,3 +520,24 @@ Main Site links to the configured `wordpress_origin` root, without a hard-coded
 hostname. Explicit WordPress links for functions not yet ported (such as PDF
 training-plan import and post editing) remain available in their existing flows.
 Earlier menu descriptions above record historical implementation checkpoints.
+
+## Unlink recorded-workout associations
+
+Owner-only recorded workout details (including calendar/log pop-ups) now show
+separate confirmed Unlink planned workout and Unlink structured workout forms.
+The planned workout page provides the corresponding actions, including detaching
+its structured prescription after its recorded match has been removed. Both
+records remain intact. Native Planned_Workout::clear_completed_workout returns
+the plan to Planned; Planned_Structure_Link::detach preserves the immutable
+recorded-history marker. A historical prescription stays locked even after both
+associations are gone. Imported sources, performances, photos, sharing settings
+and the prescription document are not rewritten by this adapter.
+
+These operations require the actual cookie owner, results and workout-management
+capabilities, exact origin, operation-specific nonce, explicit confirmation and a
+fresh association HMAC. Competing standalone matches use the same owner lock;
+other plugin interfaces retain their native boundaries. GET never unlinks, and
+stale requests require reload/review. The installed plugin must expose
+for_completed_workout and preserve_recorded_lock (tested against plugin develop
+8aa564cc8935cd742a996815fdc92b8a37681656); older services fail closed. No plugin
+or schema modification is made by this standalone change.

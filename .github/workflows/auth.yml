@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
         with:
           repository: cmolnar65/swim-log-evaluation
-          ref: 702f2e51cb9ffbc67e54d12e25de9316dd0ee534
+          ref: 8aa564cc8935cd742a996815fdc92b8a37681656
           path: plugin-reference
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
         with:
@@ -108,6 +108,10 @@ jobs:
           python3 tests/sharing-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/association-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             npm install --no-save --no-package-lock playwright@1.62.1
             npx playwright install --with-deps chromium firefox webkit
@@ -127,6 +131,8 @@ jobs:
               wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+              SWIMLOG_BROWSER="$browser" node tests/association-browser.cjs
               SWIMLOG_BROWSER="$browser" node tests/bests-browser.cjs
               SWIMLOG_BROWSER="$browser" node tests/sharing-browser.cjs
               SWIMLOG_BROWSER="$browser" node tests/settings-browser.cjs
@@ -154,6 +160,10 @@ jobs:
           python3 tests/sharing-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/association-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium node tests/browser.cjs
@@ -178,6 +188,10 @@ jobs:
           python3 tests/sharing-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/association-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium node tests/settings-browser.cjs
