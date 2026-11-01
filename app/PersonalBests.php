@@ -24,14 +24,15 @@ final class PersonalBests {
         if(!in_array($distance,array_map('strval',array_merge(array(0),Evaluator::DISTANCES)),true)||($stroke!==''&&(!isset($strokes[$stroke])||$stroke==='OVERALL')))return new \WP_Error('pb_history','Choose a valid progression distance and stroke.',array('status'=>400));
         $lifetime=Records::personal_bests($owner,$course);
         $pbs=$period==='lifetime'?$lifetime:Records::age_group_personal_bests($owner,$course,$period==='current'?$current:$selected);
-        $progression=array();$progressionUnavailable=false;
+        $progression=array();$progressionUnavailable=false;$progressionError=null;
         if($distance!=='0'&&$stroke!=='') {
-            try {$progression=Records::progression($owner,(int)$distance,$course,$stroke);}
-            catch(\Throwable $error) {$progressionUnavailable=true;}
+            require_once __DIR__.'/PersonalBestProgression.php';
+            $result=PersonalBestProgression::load($owner,(int)$distance,$course,$stroke);
+            if(is_wp_error($result)){$progressionUnavailable=true;$progressionError=$result->get_error_message();}else $progression=$result;
         }
-        return compact('course','period','current','historical','selected','distance','stroke','strokes','lifetime','pbs','progression','progressionUnavailable');
+        return compact('course','period','current','historical','selected','distance','stroke','strokes','lifetime','pbs','progression','progressionUnavailable','progressionError');
     }
     public static function url(array $state,array $changes=array()) {
-        return '/?'.http_build_query(array_replace(array('screen'=>'bests','course'=>$state['course'],'period'=>$state['period'],'age_group'=>$state['selected']),$changes));
+        return '/?'.http_build_query(array_replace(array('screen'=>'bests','course'=>$state['course'],'period'=>$state['period'],'age_group'=>$state['selected'],'history_distance'=>$state['distance'],'history_stroke'=>$state['stroke']),$changes));
     }
 }

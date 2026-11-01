@@ -23,7 +23,7 @@ for query in ('&course=bogus','&course[]=m','&period[]=lifetime','&period=bad','
     check(req(query,f['cookie'])[0]==400)
 check(req('&course=yd',f['cookie'])[0]==200)
 check(req('&period=current',f['cookie'])[0]==200)
-check(req('&history_distance=100&history_stroke=FR',f['cookie'])[0]==200)
+status,headers,body=req('&history_distance=100&history_stroke=FR',f['cookie']);check(status==200);check('id="pb-progression-table"' in body and 'Progression history is unavailable' not in body)
 check(req(cookie=f['cookie'],method='POST')[0]==404)
 # Swimmer selector input never switches this owner-only screen to another user's records.
 check(req('&swimmer_id='+str(f['owner'])+'&user_id=1',f['manager'])[0]==200)

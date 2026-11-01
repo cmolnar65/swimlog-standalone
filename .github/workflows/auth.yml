@@ -127,6 +127,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
           python3 tests/pb-comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/progression-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/progression-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
@@ -211,6 +213,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
           python3 tests/pb-comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/progression-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/progression-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
@@ -266,6 +270,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
           python3 tests/pb-comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/progression-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/progression-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp

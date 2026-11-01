@@ -183,7 +183,7 @@ try {
             require_once dirname(__DIR__).'/app/PersonalBests.php';
             $bests=\SwimlogStandalone\PersonalBests::load($owner,$_GET);
             if(is_wp_error($bests))http_response_code((int)($bests->get_error_data()['status']??400));
-            $returnUrl='/?screen=bests';
+            $returnUrl=is_wp_error($bests)?'/?screen=bests':\SwimlogStandalone\PersonalBests::url($bests);
         } elseif ($screen==='log') {
             require_once dirname(__DIR__).'/app/WorkoutLog.php';
             $log=\SwimlogStandalone\WorkoutLog::load($owner,$_GET);

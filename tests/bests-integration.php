@@ -14,7 +14,7 @@ $b=PB::load($owner,array('period'=>'lifetime'));$check(count($b['historical'])==
 $history=PB::load($owner,array('period'=>'historical','age_group'=>$b['historical'][0]));$check((int)$history['pbs'][100]['FR']->duration_ms===30000);
 if($prior==='')delete_user_meta($owner,'swimlog_birthdate');else update_user_meta($owner,'swimlog_birthdate',$prior);
 $progression=PB::load($owner,array('history_distance'=>'100','history_stroke'=>'FR'));$check(!is_wp_error($progression));
-$check($progression['progressionUnavailable']||count($progression['progression'])>0);
+$check(!$progression['progressionUnavailable']&&count($progression['progression'])>0);
 foreach(array('running','walking','open_water')as$type)$check(Evaluator::evaluate_workout($f['ids'][$type],$owner)===0);
 $check(is_wp_error(PB::load(0,array())));$check(is_wp_error(PB::load($owner+1,array())));
 unset($_COOKIE[LOGGED_IN_COOKIE]);$check(is_wp_error(PB::load($owner,array())));$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];

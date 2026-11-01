@@ -18,7 +18,7 @@ if($signedIn) {
     elseif($screen==='readiness'&&!isset($workoutDetail)) { $pageTitle='Swim Evaluation';$pageTemplate='/swim-evaluation.php'; }
     elseif(in_array($screen,array('trends','pool'),true)) { $pageTitle=$screen==='trends'?'Training Trends':'Pool Analytics';$pageTemplate='/analytics-report.php'; }
     elseif($screen==='volume') { $pageTitle='Training Volume';$pageTemplate='/training-volume.php'; }
-    elseif($screen==='bests') { $pageTitle='Personal Bests';$pageTemplate='/personal-bests.php'; }
+    elseif($screen==='bests'&&!isset($workoutDetail)) { $pageTitle='Personal Bests';$pageTemplate='/personal-bests.php'; }
     elseif($screen==='structures') { $pageTitle='Structured Workouts';$pageTemplate='/structured.php'; }
     elseif(isset($eventForm)) { $pageTitle=$eventForm['operation']==='result'?'Record race result':'Event editor';$pageTemplate='/event-form.php'; }
     elseif(isset($eventDetail)) { $pageTitle='Event details';$pageTemplate='/event-page.php'; }
