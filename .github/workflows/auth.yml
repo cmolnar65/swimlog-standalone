@@ -122,8 +122,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
-            npm install --no-save --no-package-lock playwright@1.62.1
-            npx playwright install --with-deps chromium firefox webkit
+            timeout --signal=TERM --kill-after=15s 240s npm install --no-save --no-package-lock playwright@1.62.1
+            timeout --signal=TERM --kill-after=15s 300s npx playwright install --with-deps chromium firefox webkit
             openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=example.test' -addext 'subjectAltName=DNS:wordpress.example.test,DNS:swimlog.example.test' -keyout /tmp/swimlog-key.pem -out /tmp/swimlog-cert.pem > /dev/null 2>&1
             env SWIMLOG_SYNTHETIC_TEST=1 python3 "$GITHUB_WORKSPACE/tests/tls-proxy.py" > /tmp/swimlog-tls.log 2>&1 &
             tls=$!
@@ -144,14 +144,14 @@ jobs:
               wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
               SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/analytics-browser.cjs
-              SWIMLOG_BROWSER="$browser" node tests/volume-delete-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/volume-delete-browser.cjs
               wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
-              SWIMLOG_BROWSER="$browser" node tests/association-browser.cjs
-              SWIMLOG_BROWSER="$browser" node tests/bests-browser.cjs
-              SWIMLOG_BROWSER="$browser" node tests/sharing-browser.cjs
-              SWIMLOG_BROWSER="$browser" node tests/settings-browser.cjs
-              SWIMLOG_BROWSER="$browser" node tests/entry-browser.cjs
-              SWIMLOG_BROWSER="$browser" node tests/browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/association-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/bests-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/sharing-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/entry-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/browser.cjs
             done
           fi
           # Older installed builds have no native_distance/duration/normalize_form helpers.
@@ -188,10 +188,10 @@ jobs:
           python3 tests/analytics-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
-            SWIMLOG_BROWSER=chromium node tests/browser.cjs
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/browser.cjs
             wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
-            SWIMLOG_BROWSER=chromium node tests/settings-browser.cjs
-            SWIMLOG_BROWSER=chromium node tests/entry-browser.cjs
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/entry-browser.cjs
           fi
           # Simulate an installed Garmin API without the newer verification helper/constant.
           python3 -c 'import pathlib; p=pathlib.Path("/tmp/swimlog-wp/wp-content/plugins/swimlog-core/includes/class-garmin-personal-api.php"); p.write_text(p.read_text().replace("connection_ready", "legacy_connection_ready").replace("TESTED_KEY", "LEGACY_TESTED_KEY"))'
@@ -224,5 +224,5 @@ jobs:
           python3 tests/analytics-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
-            SWIMLOG_BROWSER=chromium node tests/settings-browser.cjs
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
           fi
