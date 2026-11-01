@@ -24,7 +24,7 @@ final class WorkoutAssociations {
         $workout=empty($plan->completed_workout_id)?null:Workout::get_for_user((int)$plan->completed_workout_id,$owner);
         if(!empty($plan->completed_workout_id)&&!$workout)return self::error('The recorded association is unavailable.',409);
         $history=$structure?get_post_meta($structure['id'],Store::META_RECORDED,true):'';
-        return array('plan_id'=>(int)$id,'workout_id'=>$workout?(int)$workout->id:0,'title'=>$plan->title,'structure'=>$structure?array('id'=>$structure['id'],'title'=>$structure['title']):null,'revision'=>hash_hmac('sha256',serialize(array($plan,$structure,$history,$workout)),wp_salt('nonce')));
+        return array('plan_id'=>(int)$id,'workout_id'=>$workout?(int)$workout->id:0,'title'=>$plan->title,'date'=>$plan->planned_date,'deletable'=>empty($plan->completed_workout_id)&&$plan->status!=='completed','structure'=>$structure?array('id'=>$structure['id'],'title'=>$structure['title']):null,'revision'=>hash_hmac('sha256',serialize(array($plan,$structure,$history,$workout)),wp_salt('nonce')));
     }
     public static function forWorkout($owner,$id) {
         $ready=self::ready($owner);if(is_wp_error($ready))return $ready;
@@ -38,7 +38,7 @@ final class WorkoutAssociations {
         if(array_diff(array_keys($input),array('plan_id','workout_id','operation','nonce','revision','return_to','confirm')))return self::error('Unexpected association fields.');
         foreach($input as$value)if(!is_string($value)||strlen($value)>256)return self::error('Invalid association request.');
         $id=$input['plan_id']??'';$op=$input['operation']??'';
-        if(!preg_match('/^[1-9][0-9]{0,17}$/D',$id)||!in_array($op,array('match','structure'),true)||!in_array($input['return_to']??'',array('plan','workout'),true))return self::error('Choose a valid association.');
+        if(!preg_match('/^[1-9][0-9]{0,17}$/D',$id)||!in_array($op,array('match','structure','delete'),true)||!in_array($input['return_to']??'',array('plan','workout'),true))return self::error('Choose a valid association.');
         if($origin!==$appOrigin||!wp_verify_nonce($input['nonce']??'','standalone_unlink_'.$op.'_'.$id))return self::error('The unlink request expired. Reload before trying again.',403);
         if(($input['confirm']??'')!=='1')return self::error('Confirm removal of this association.',422);
         global $wpdb;$lock='swimlog_match_'.substr(hash('sha256',DB_NAME.'|'.$wpdb->prefix.'|'.$owner),0,48);
@@ -53,6 +53,16 @@ final class WorkoutAssociations {
             if(!hash_equals($state['revision'],$input['revision']??'')||(string)$state['workout_id']!==($input['workout_id']??''))return self::error('The association changed. Reload and review it before unlinking.',409);
             if(($op==='match'&&!$state['workout_id'])||($op==='structure'&&!$state['structure']))return self::error('This association is no longer present.',409);
             if($input['return_to']==='workout'&&!$state['workout_id'])return self::error('Choose the planned workout page.',409);
+            if($op==='delete') {
+                if(!$state['deletable'])return self::error('Unlink the recorded workout before deleting this plan.',409);
+                if($state['structure']) {
+                    $detached=Links::detach((int)$id,$owner);if(is_wp_error($detached))return $detached;
+                    $remaining=Links::for_plan((int)$id,$owner);if(is_wp_error($remaining)||$remaining)return self::error('The prescription could not be detached. The plan was not deleted.',503);
+                }
+                $deleted=Plans::delete((int)$id,$owner);if(is_wp_error($deleted))return $deleted;
+                if(Plans::get_for_user((int)$id,$owner))return self::error('The plan could not be deleted. Reload to review its state.',503);
+                return array('url'=>'/?'.http_build_query(array('date'=>$state['date'],'view'=>'month','plan_deleted'=>'1')));
+            }
             $result=$op==='match'?Plans::clear_completed_workout((int)$id,$owner):Links::detach((int)$id,$owner);
             if(is_wp_error($result))return $result;
             $after=self::forPlan($owner,$id);if(is_wp_error($after))return $after;

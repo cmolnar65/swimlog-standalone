@@ -1,0 +1,13 @@
+<?php use SwimLogEvaluation\Workout; ?>
+<section class="calendar-panel workout-page" aria-labelledby="volume-title"><h2 id="volume-title">Training Volume</h2>
+<?php if(is_wp_error($volume)): ?><p role="alert"><?php echo esc_html($volume->get_error_message()); ?></p><?php else:$v=$volume; ?>
+<p>Pool training volume by stroke · Last <?php echo esc_html($v['months']); ?> months</p>
+<p>Swimming only: active pool lengths provide distance and time. Rest, open-water swims, running and walking are excluded. Meter and yard courses stay separate. These filters do not change your saved preference.</p>
+<form method="get" class="log-filters"><input type="hidden" name="screen" value="volume">
+<div><label for="volume-months">Period (months)</label><input id="volume-months" name="months" type="number" min="1" max="24" required value="<?php echo esc_attr($v['months']); ?>"></div>
+<div><label for="volume-course">Course</label><select id="volume-course" name="course"><?php foreach(array(''=>'All courses (shown separately)','m'=>'Meters','yd'=>'Yards')as$key=>$label): ?><option value="<?php echo esc_attr($key); ?>" <?php selected($v['course'],$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></div>
+<div><label for="volume-stroke">Stroke</label><select id="volume-stroke" name="stroke"><option value="">All strokes</option><?php foreach($v['strokes']as$key=>$label): ?><option value="<?php echo esc_attr($key); ?>" <?php selected($v['stroke'],$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></div><button>Apply filters</button></form>
+<?php if(!$v['rows']): ?><p>No active pool lengths match these filters.</p><?php else:foreach(array('m'=>'Meters','yd'=>'Yards')as$unit=>$label):if(!$v['groups'][$unit])continue; ?>
+<h3><?php echo esc_html($label); ?></h3><div class="detail-table-wrap" role="region" aria-label="<?php echo esc_attr($label.' training volume'); ?>" tabindex="0"><table><thead><tr><th scope="col">Stroke</th><th scope="col">Workouts</th><th scope="col">Active lengths</th><th scope="col">Distance</th><th scope="col">Active swim time</th></tr></thead><tbody>
+<?php foreach($v['groups'][$unit]as$row): ?><tr><th scope="row"><?php echo esc_html($v['strokes'][$row->stroke]??$row->stroke); ?></th><td><?php echo esc_html(number_format_i18n((int)$row->workout_count)); ?></td><td><?php echo esc_html(number_format_i18n((int)$row->length_count)); ?></td><td><?php echo esc_html(number_format_i18n((float)$row->distance_native,2).' '.$unit); ?></td><td><?php echo esc_html(Workout::format_duration((int)$row->active_time_ms)); ?></td></tr><?php endforeach; ?></tbody></table></div>
+<?php endforeach;endif;endif; ?></section>

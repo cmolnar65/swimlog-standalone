@@ -17,3 +17,5 @@
 <div class="plan-field plan-wide"><label for="plan-instructions">Workout instructions (optional)</label><textarea id="plan-instructions" name="workout_instructions" rows="9" maxlength="20000"><?php echo esc_textarea($v['workout_instructions']); ?></textarea></div>
 <div class="plan-actions plan-wide"><button>Save planned workout</button><a class="control" href="<?php echo esc_url($ctx['url']); ?>">Cancel</a></div>
 </form></section>
+
+<?php if($planForm['id']!=='new'&&!$planForm['error']):require_once __DIR__.'/WorkoutAssociations.php';$association=\SwimlogStandalone\WorkoutAssociations::forPlan($owner,$planForm['id']);require __DIR__.'/plan-delete-controls.php';endif; ?>

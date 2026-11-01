@@ -541,3 +541,23 @@ stale requests require reload/review. The installed plugin must expose
 for_completed_workout and preserve_recorded_lock (tested against plugin develop
 8aa564cc8935cd742a996815fdc92b8a37681656); older services fail closed. No plugin
 or schema modification is made by this standalone change.
+
+## Training Volume and planned-workout deletion
+
+Evaluation → Training Volume (`/?screen=volume`) is a private owner report using
+`Workout::stroke_volume_for_user()`. It matches the plugin's pool report: active,
+positive-distance pool lengths only; separate meter/yard courses; stroke,
+workout/length counts, native distance and active swim time; rolling 1–24 month
+period. The saved swimmer preference supplies the default (otherwise 3 months).
+Read-only filters do not change it. Rest, open water, running, walking and
+measurements never enter this report. The plugin's existing management capability
+is required. This page adds no public aggregate or separate calculations.
+
+Delete Planned Workout is available on unmatched plan details/pop-ups and eligible
+existing plan editors. A matched plan must first be unlinked. Deletion is a separate
+confirmed POST with owner/capability/origin/nonce checks, fresh association HMAC,
+and the existing match/structure owner locks. It uses native detach/delete services,
+keeps recorded workouts and structured prescriptions, and preserves recorded-history
+locks. It never deletes the underlying recorded workout. If deletion fails after a
+successful detach, the plan remains and the user must reload/review the current
+association state before retrying. No plugin/schema change or deployment is included.

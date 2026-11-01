@@ -40,7 +40,7 @@ try {
         Auth::cookie(Auth::STATE_COOKIE, '', time() - 3600);
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
-    if($action==='association_unlink')require dirname(__DIR__).'/app/association-route.php';
+    if(in_array($action,array('association_unlink','plan_delete'),true))require dirname(__DIR__).'/app/association-route.php';
     if(in_array($action,array('workout_write','workout_photo','workout_public_link'),true)||isset($_GET['edit_workout']))require dirname(__DIR__).'/app/workout-editor-route.php';
     if (in_array($action,array('settings_write','garmin_write'),true)||in_array($_GET['screen']??null,array('swimmer','locations','garmin_setup','garmin_activities','garmin_measurements','garmin_history'),true)) require dirname(__DIR__).'/app/configuration-route.php';
     if (in_array($action,array('manual_save','workout_upload'),true)||in_array($_GET['screen']??null,array('manual','import'),true)) require dirname(__DIR__).'/app/entry-route.php';
@@ -125,7 +125,7 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
@@ -139,6 +139,11 @@ try {
             $returnUrl=$planActionForm['context']['url'];
         } elseif (isset($planForm)) {
             $returnUrl=$planForm['context']['url'];
+        } elseif ($screen==='volume') {
+            require_once dirname(__DIR__).'/app/TrainingVolume.php';
+            $volume=\SwimlogStandalone\TrainingVolume::load($owner,$_GET);
+            if(is_wp_error($volume))http_response_code((int)($volume->get_error_data()['status']??400));
+            $returnUrl='/?screen=volume';
         } elseif ($screen==='bests') {
             require_once dirname(__DIR__).'/app/PersonalBests.php';
             $bests=\SwimlogStandalone\PersonalBests::load($owner,$_GET);
