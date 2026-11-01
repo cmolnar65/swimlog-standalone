@@ -7,7 +7,7 @@ if(is_wp_error(\SwimlogStandalone\WorkoutAssociations::ready($owner)))throw new 
 $old=get_user_meta($owner,'synthetic_association_plans',true);if(is_array($old))foreach($old as$row){Plans::clear_completed_workout($row['plan'],$owner);Links::detach($row['plan'],$owner);Plans::delete($row['plan'],$owner);wp_delete_post($row['structure'],true);}
 $form=\SwimlogStandalone\StructuredWorkouts::editor($owner,'new');$pairs=array();
 foreach(array('pool','open_water')as$type){
- $plan=Plans::save($owner,array('title'=>'Synthetic unlink '.$type,'planned_date'=>'2026-01-01','workout_type'=>$type,'workout_instructions'=>'Synthetic unchanged instructions'));
+ $plan=Plans::save($owner,array('title'=>'Synthetic unlink '.$type,'planned_date'=>wp_date('Y-m-d'),'workout_type'=>$type,'workout_instructions'=>'Synthetic unchanged instructions'));
  if(is_wp_error($plan))throw new RuntimeException('Association plan seed: '.$plan->get_error_code());
  $structure=Store::save($owner,'Synthetic unlink prescription '.$type,$form['document']);
  if(is_wp_error($structure))throw new RuntimeException('Association structure seed: '.$structure->get_error_code());
