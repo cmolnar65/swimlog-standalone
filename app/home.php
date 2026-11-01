@@ -9,6 +9,7 @@ if($signedIn) {
     elseif(in_array($screen,array('garmin_activities','garmin_measurements','garmin_history'),true)) { $pageTitle='Garmin';$pageTemplate='/garmin.php'; }
     elseif($screen==='training_pdf'){$pageTitle='Import Training Plan PDF';$pageTemplate='/training-pdf.php';}
     elseif(in_array($screen,array('manual','import'),true)) { $pageTitle=$screen==='manual'?'Add Workout':'Import Workout';$pageTemplate=$screen==='manual'?'/manual-entry.php':'/workout-import.php'; }
+    elseif($screen==='compare'){$pageTitle='Compare Swims';$pageTemplate='/swim-comparison.php';}
     elseif($screen==='readiness'&&!isset($workoutDetail)) { $pageTitle='Swim Evaluation';$pageTemplate='/swim-evaluation.php'; }
     elseif(in_array($screen,array('trends','pool'),true)) { $pageTitle=$screen==='trends'?'Training Trends':'Pool Analytics';$pageTemplate='/analytics-report.php'; }
     elseif($screen==='volume') { $pageTitle='Training Volume';$pageTemplate='/training-volume.php'; }

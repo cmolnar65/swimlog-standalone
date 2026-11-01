@@ -55,6 +55,7 @@ jobs:
           set -e
           while IFS= read -r -d '' file; do php -l "$file"; done < <(find app public companion config tests -name '*.php' -print0)
           for script in scripts/*.sh; do bash -n "$script"; done
+          node tests/comparison-selection.cjs
           php tests/release-loader.php
           SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php
           SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php partial
@@ -134,6 +135,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/comparison-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
@@ -204,6 +207,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/comparison-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
@@ -245,6 +250,8 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/comparison-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py

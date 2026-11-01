@@ -126,7 +126,7 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness','compare'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
@@ -140,6 +140,11 @@ try {
             $returnUrl=$planActionForm['context']['url'];
         } elseif (isset($planForm)) {
             $returnUrl=$planForm['context']['url'];
+        } elseif($screen==='compare') {
+            require_once dirname(__DIR__).'/app/SwimComparison.php';
+            $comparison=\SwimlogStandalone\SwimComparison::load($owner,$_GET['compare']??null);
+            if(is_wp_error($comparison))http_response_code((int)($comparison->get_error_data()['status']??400));
+            $returnUrl='/?screen=log';
         } elseif($screen==='readiness') {
             require_once dirname(__DIR__).'/app/SwimEvaluation.php';
             $evaluation=\SwimlogStandalone\SwimEvaluation::load($owner,$_GET);

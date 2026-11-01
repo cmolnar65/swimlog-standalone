@@ -1,0 +1,5 @@
+// Selection behavior with a minimal DOM stub, without a browser or Playwright.
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const boxes=Array.from({length:3},()=>({checked:false,disabled:false,addEventListener(type,fn){this.change=fn;}})),button={},status={},form={querySelectorAll(){return boxes;},querySelector(s){return s==='[data-compare-button]'?button:status;},addEventListener(type,fn){this.submit=fn;}};
+vm.runInNewContext(fs.readFileSync('public/assets/swim-comparison.js','utf8'),{document:{querySelector(){return form;}},window:{addEventListener(){}}});
+assert(button.disabled);boxes[0].checked=true;boxes[0].change();assert(button.disabled);boxes[1].checked=true;boxes[1].change();assert(!button.disabled);assert(boxes[2].disabled);assert.equal(status.textContent,'2 of 2 swims selected');boxes[0].checked=false;boxes[0].change();assert(!boxes[2].disabled);assert(button.disabled);let prevented=false;form.submit({preventDefault(){prevented=true;}});assert(prevented);console.log('Comparison selection: 8 assertions passed (DOM stub, no browser).');
