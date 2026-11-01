@@ -4,7 +4,7 @@ require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/ap
 use SwimlogStandalone\SwimEvaluation as E;use SwimLogEvaluation\Race_Readiness as R;use SwimLogEvaluation\Event;
 $f=json_decode(file_get_contents('/tmp/swimlog-readiness.json'),true);$owner=(int)$f['owner'];wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];$checks=0;
 $check=static function($v)use(&$checks){++$checks;if(!$v)throw new RuntimeException('Readiness assertion '.$checks.' failed.');};
-$model=E::load($owner,array());$check(!is_wp_error($model));$d=$model['ready'];$check($d===R::for_event($owner,Event::get_for_user($f['ids']['events'][0],$owner),42));
+$model=E::load($owner,array());$check(!is_wp_error($model));$d=$model['ready'];$expected=R::for_event($owner,Event::get_for_user($f['ids']['events'][0],$owner),42);$evidence=$d;unset($expected['seconds_until_event'],$evidence['seconds_until_event']);$check($evidence===$expected); // Countdown legitimately changes between calls.
 $check($d['workout_count']===2&&$d['length_count']===2&&$d['distance_native']==200&&$d['active_time_ms']===140000);
 $check($d['lifetime_pb_duration_ms']===60000&&$d['recent_best_duration_ms']===65000&&$d['recent_performance_count']===2);
 $check($d['recent_change_ms']===5000&&$d['recent_best_vs_pb_ms']===5000&&$d['recent_average_pace_100_ms']===67500);
