@@ -44,7 +44,9 @@ check(post('garmin_setup','activity_sync',{'enabled':'1','types[]':['lap_swimmin
 check(post('garmin_setup','measurement_sync',{'categories[]':['weight']})[0]==303)
 status,_,body=req('/?screen=swimmer');check('Preferred swimming course unit' in body and 'Show the alternate unit in parentheses' in body)
 check(post('swimmer','swimmer_save',{'birthdate':'1965-01-02','calendar_first_day':'monday','training_volume_months':'6','swim_course':'yd','running':'mi','walking':'km','cycling':'mi','weight':'lb','show_secondary':'1'})[0]==303)
-body=req('/?screen=swimmer')[2];check('value="yd" selected="selected"' in body and 'value="mi" selected="selected"' in body and 'name="show_secondary" value="1" checked="checked"' in body)
+body=req('/?screen=swimmer')[2]
+check(re.search(r'<option\b(?=[^>]*value="yd")(?=[^>]*selected)[^>]*>',body) is not None and re.search(r'<option\b(?=[^>]*value="mi")(?=[^>]*selected)[^>]*>',body) is not None)
+check(re.search(r'<input\b(?=[^>]*name="show_secondary")(?=[^>]*checked)[^>]*>',body) is not None)
 check(post('locations','location_save',{'location_id':'new','name':'Synthetic HTTP pool','pool_length':'25','pool_unit':'m','latitude':'','longitude':'','notes':''})[0]==303)
 # No raw provider routes or credentials enter the rendered activity list.
 status,_,body=post('garmin_activities','activities_browse',{'start':'2026-10-01','end':'2026-10-01','types[]':['lap_swimming']})
