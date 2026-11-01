@@ -19,4 +19,6 @@ for screen in ('pace','repeats'):
  for key in ('foreign','land'):check(req(screen,'&swim_id='+str(f[key]),f['cookie'])[0]==404)
 check('9.09%' in req('pace',q,f['cookie'])[2]);b=req('repeats',q,f['cookie'])[2];check('Candidate repeated lap group' in b and 'Unknown' in b and 'may include in-lap rest' in b)
 q='&swim_id='+str(f['ids']['manual']);b=req('repeats',q,f['cookie'])[2];check('Manual set 1' in b and '+10.00' in b and 'Explicitly measured repetition' in b and 'Entered rest' in b);b=req('pace',q,f['cookie'])[2];check('No timed samples' in b and 'at least two timed lengths' in b)
+b=req('pace','&swim_id='+str(f['ids']['imported']),f['cookie'])[2];check('data-chart-tooltip=' in b and 'Swim date: 2020-01-01' in b and 'Length 1' in b and '1:40.00 / 100 m' in b);check('tabindex="0" role="button"' in b and '/assets/chart-tooltips.js' in b)
+b=req('repeats','&swim_id='+str(f['ids']['manual']),f['cookie'])[2];check('Swim date: 2020-01-02' in b and 'Repetition/lap 1' in b and '1:10.00 / 100 yd' in b)
 print('Swim session analysis HTTP: '+str(checks)+' assertions passed.')

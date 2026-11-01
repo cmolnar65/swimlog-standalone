@@ -40,3 +40,5 @@
 .comparison-chart{max-width:720px;display:block}
 
 .balance-chart{display:block;width:100%;max-width:720px;height:auto;font:14px system-ui}
+
+[data-chart-point]{cursor:pointer;outline:none}[data-chart-point]:hover .chart-point-dot,[data-chart-point]:focus-visible .chart-point-dot{stroke:#946000;stroke-width:3}.comparison-chart line,.comparison-chart polyline{pointer-events:none}.chart-tooltip{position:fixed;z-index:1000;max-width:min(340px,calc(100vw - 24px));padding:10px 14px;border-radius:8px;background:#143450;color:#fff;box-shadow:0 4px 18px #0003;pointer-events:none;font-size:.9rem;line-height:1.5;overflow-wrap:anywhere}.chart-help{font-size:.9rem;color:#466580}
