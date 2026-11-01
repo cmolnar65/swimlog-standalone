@@ -1,0 +1,10 @@
+<?php
+if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable synthetic environment required.');
+require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/StructuredWorkouts.php';
+use SwimLogEvaluation\Planned_Workout as P;use SwimLogEvaluation\Planned_Structure_Link as L;use SwimLogEvaluation\Structured_Workout_Store as S;
+$f=json_decode(file_get_contents('/tmp/swimlog-session.json'),true);$owner=(int)$f['owner'];wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];\SwimlogStandalone\StructuredWorkouts::ready($owner);
+$ids=get_user_meta($owner,'synthetic_advanced_evaluation',true);if(!$ids){$doc=array('version'=>1,'unit'=>'m','sections'=>array(array('type'=>'section','label'=>'Main set','children'=>array(array('type'=>'repeat','count'=>2,'children'=>array(array('type'=>'step','distance'=>100,'stroke'=>'FR','rest'=>'10')))))));$s=S::save($owner,'Synthetic evaluation prescription',$doc);if(is_wp_error($s))throw new RuntimeException('Synthetic prescription seed failed.');$ids=array('structure'=>$s);
+ foreach(array('matched','unmatched','free')as$key){$id=P::save($owner,array('title'=>'Synthetic evaluation '.$key,'planned_date'=>wp_date('Y-m-d'),'workout_type'=>'pool','planned_distance_m'=>200,'planned_duration_ms'=>150000,'pool_length_m'=>25,'pool_course'=>'m','notes'=>'PRIVATE_EVALUATION_PLAN_NOTES','workout_instructions'=>'PRIVATE_EVALUATION_INSTRUCTIONS'));if(is_wp_error($id))throw new RuntimeException('Synthetic evaluation plan seed failed.');$ids[$key]=$id;}
+ $r=L::attach($ids['matched'],$s,$owner);if(is_wp_error($r))throw new RuntimeException('Synthetic plan structure attachment failed.');foreach(array('matched'=>'manual','free'=>'imported')as$key=>$source){$r=P::associate_completed_workout($ids[$key],$owner,$f['ids'][$source]);if(is_wp_error($r))throw new RuntimeException('Synthetic completed match failed.');}update_user_meta($owner,'synthetic_advanced_evaluation',$ids);
+}
+$f['plans']=$ids;file_put_contents('/tmp/swimlog-advanced-evaluation.json',wp_json_encode($f));chmod('/tmp/swimlog-advanced-evaluation.json',0600);

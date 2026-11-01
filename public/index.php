@@ -126,7 +126,7 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness','compare','compare_bests','pace','repeats'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness','compare','compare_bests','pace','repeats','efficiency','plan_evaluation'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
@@ -140,6 +140,12 @@ try {
             $returnUrl=$planActionForm['context']['url'];
         } elseif (isset($planForm)) {
             $returnUrl=$planForm['context']['url'];
+        } elseif($screen==='efficiency'){
+            require_once dirname(__DIR__).'/app/EfficiencyTrends.php';$efficiency=\SwimlogStandalone\EfficiencyTrends::load($owner,$_GET);
+            if(is_wp_error($efficiency))http_response_code((int)($efficiency->get_error_data()['status']??400));$returnUrl='/?screen=efficiency';
+        } elseif($screen==='plan_evaluation'){
+            require_once dirname(__DIR__).'/app/PlanEvaluation.php';$planEvaluation=\SwimlogStandalone\PlanEvaluation::load($owner,$_GET);
+            if(is_wp_error($planEvaluation))http_response_code((int)($planEvaluation->get_error_data()['status']??400));$returnUrl='/?screen=plan_evaluation';
         } elseif(in_array($screen,array('pace','repeats'),true)){
             require_once dirname(__DIR__).'/app/SwimSessionAnalysis.php';
             $sessionAnalysis=\SwimlogStandalone\SwimSessionAnalysis::load($owner,$_GET);

@@ -9,3 +9,5 @@
 <?php $association=$detail['association']??null;$associationReturn='plan';require __DIR__.'/association-controls.php'; ?>
 <?php require __DIR__.'/plan-delete-controls.php'; ?>
 </article>
+
+<p><a class="control" href="<?php echo esc_url('/?screen=plan_evaluation&evaluation_plan='.(int)$detail['id']); ?>">Planned versus Completed</a></p>
