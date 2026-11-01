@@ -1,0 +1,2 @@
+'use strict';
+document.querySelectorAll('[data-pb-period]').forEach(group=>{const mode=group.querySelector('[data-period-mode]');const update=()=>group.querySelectorAll('[data-period-fields]').forEach(fields=>{const active=fields.dataset.periodFields===mode.value;fields.hidden=!active;fields.querySelectorAll('input').forEach(input=>{input.disabled=!active;input.required=active;});});mode.addEventListener('change',update);update();});

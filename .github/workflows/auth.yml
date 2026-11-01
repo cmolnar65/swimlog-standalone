@@ -56,6 +56,7 @@ jobs:
           while IFS= read -r -d '' file; do php -l "$file"; done < <(find app public companion config tests -name '*.php' -print0)
           for script in scripts/*.sh; do bash -n "$script"; done
           node tests/comparison-selection.cjs
+          node tests/pb-comparison-controls.cjs
           php tests/release-loader.php
           SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php
           SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php partial
@@ -123,6 +124,9 @@ jobs:
           python3 tests/sharing-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/pb-comparison-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
@@ -195,6 +199,9 @@ jobs:
           python3 tests/sharing-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/pb-comparison-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
@@ -238,6 +245,9 @@ jobs:
           python3 tests/sharing-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
           python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/pb-comparison-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
