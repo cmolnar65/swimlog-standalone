@@ -40,9 +40,13 @@ final class CalendarView {
                 if (isset($days[$key])) $days[$key]['items'][] = self::item($row, $kind);
             }
         }
+        require_once __DIR__.'/CalendarMeasurements.php';
+        $measurements=CalendarMeasurements::load($owner,$start->format('Y-m-d'),$end->format('Y-m-d'));$measurementError=null;
+        if(is_wp_error($measurements))$measurementError=$measurements->get_error_message();
+        else foreach($measurements as$key=>$measurement)if(isset($days[$key]))$days[$key]['items'][]=array('type'=>'measurement','measurement'=>$measurement);
         $previous = $view === 'month' ? $date->modify('first day of previous month') : $date->modify('-7 days');
         $next = $view === 'month' ? $date->modify('first day of next month') : $date->modify('+7 days');
-        return array('days'=>$days, 'weeks'=>$data['weeks'], 'date'=>$date, 'view'=>$view, 'today'=>$today, 'previous'=>$previous, 'next'=>$next, 'start'=>$start, 'end'=>$end);
+        return array('measurement_error'=>$measurementError,'days'=>$days, 'weeks'=>$data['weeks'], 'date'=>$date, 'view'=>$view, 'today'=>$today, 'previous'=>$previous, 'next'=>$next, 'start'=>$start, 'end'=>$end);
     }
     public static function url($date, $view) { return '/?' . http_build_query(array('date'=>$date->format('Y-m-d'), 'view'=>$view)); }
     public static function distance($value, $unit='m') { return $value === null ? 'Distance unavailable' : number_format_i18n((float)$value, (float)$value == floor((float)$value) ? 0 : 1) . ' ' . $unit; }

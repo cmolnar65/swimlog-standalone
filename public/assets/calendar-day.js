@@ -31,6 +31,7 @@
     const add=document.querySelector('[data-add-event]');if(add){const link=add.cloneNode(true),url=new URL(link.href);url.searchParams.set('event_date',source.dataset.date);link.href=url.pathname+url.search;actions.append(link);}
     document.documentElement.classList.add('workout-dialog-open');dialog.showModal();dialog.querySelector('[data-day-close]').focus();
   });
+  document.addEventListener('toggle',event=>{const entry=event.target;if(entry.matches?.('.type-measurement')&&entry.open){const cell=entry.closest('.calendar-day');if(cell)cell.querySelector('[data-day-open]')?.click();}},true);
   dialog.querySelector('[data-day-close]').addEventListener('click',()=>dialog.close());
   dialog.addEventListener('close',()=>{
     if(!source)return;
