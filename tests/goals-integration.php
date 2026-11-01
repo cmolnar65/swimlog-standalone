@@ -28,7 +28,7 @@ try {
     $delete=Goals::delete($owner,array('nonce'=>wp_create_nonce('standalone_goal_delete'),'goal_id'=>(string)$foreign['id']),'https://swimlog.example.test','https://swimlog.example.test');$check(is_wp_error($delete),'Owner-scoped deletion cannot delete another swimmer goal.');
     $markers=Goals::calendarMarkers($owner,$start,$due);$pairs=array_map(static function($m){return$m['id'].':'.$m['marker'];},$markers);
     $check(in_array($mGoal.':goal_start',$pairs,true)&&in_array($mGoal.':goal_end',$pairs,true)&&in_array($both.':goal_due',$pairs,true),'Calendar marks date-range boundaries and one-time due dates.');
-    $goals=$loaded;ob_start();require dirname(__DIR__).'/app/goals.php';$html=ob_get_clean();$check(strpos($html,'Set Goal')!==false&&strpos($html,'List Goals')!==false&&strpos($html,'Synthetic meter period')!==false,'Standalone Goals screen renders set/list controls and live progress.');
+    $goals=$loaded;ob_start();require dirname(__DIR__).'/app/goals.php';$html=ob_get_clean();$check(strpos($html,'Set Goal')!==false&&strpos($html,'List Goals')!==false&&strpos($html,'Synthetic meter period')!==false&&strpos($html,'goal_delete')!==false,'Standalone Goals screen renders set/list controls, live progress and per-goal deletion.');
     WP_CLI::success('Standalone synthetic goals storage, native-course progress, one-time targets, ownership and calendar checks passed '.$checks.' assertions.');
 } finally {
     global $wpdb;
