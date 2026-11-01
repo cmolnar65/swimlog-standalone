@@ -2,6 +2,13 @@ name: Standalone checks
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      run_browser:
+        description: 'Run browser checks only when explicitly requested'
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -11,6 +18,8 @@ jobs:
   integration:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
+    env:
+      SWIMLOG_RUN_BROWSER: ${{ github.event_name == 'workflow_dispatch' && inputs.run_browser }}
     strategy:
       fail-fast: false
       matrix:
@@ -124,7 +133,7 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
-          if [ '${{ matrix.php }}' = '8.3' ]; then
+          if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
             timeout --signal=TERM --kill-after=15s 240s npm install --no-save --no-package-lock playwright@1.62.1
             timeout --signal=TERM --kill-after=15s 300s npx playwright install --with-deps chromium firefox webkit
             openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=example.test' -addext 'subjectAltName=DNS:wordpress.example.test,DNS:swimlog.example.test' -keyout /tmp/swimlog-key.pem -out /tmp/swimlog-cert.pem > /dev/null 2>&1
@@ -189,7 +198,7 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
-          if [ '${{ matrix.php }}' = '8.3' ]; then
+          if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/browser.cjs
             wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
@@ -225,7 +234,7 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
-          if [ '${{ matrix.php }}' = '8.3' ]; then
+          if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
           fi

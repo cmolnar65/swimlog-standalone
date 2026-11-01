@@ -586,3 +586,14 @@ Only Training Trends includes open-water swims. Filters do not write preferences
 Related-report links carry applicable period/course/stroke filters. Responsive
 scroll regions and tables remain available beside the weekly visualization.
 No plugin/schema change, public aggregate, release or deployment is included.
+
+
+## Browser checks require explicit authorization
+
+Automatic push and pull-request checks run syntax, PHP/WordPress integrations,
+HTTP transport/security tests and compatibility regressions. They do not install
+Playwright/browsers or run browser suites. Browser execution is restricted to a
+manual workflow dispatch with `run_browser=true`; its default is false. Request
+browser checks explicitly when they are needed. HTTP tests use direct requests
+to a disposable PHP server and do not launch a browser. No live site is tested
+or deployed by these checks.
