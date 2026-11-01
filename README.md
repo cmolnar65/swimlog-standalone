@@ -111,6 +111,18 @@ introduced. An incomplete installed schema produces a controlled error; the app
 does not run upgrades. Editing and private measurement views use the
 capability-filtered navigation and existing plugin services.
 
+## Private swimming goals
+
+The standalone Goals screen stores goals in the installed plugin's owner-scoped
+goals table and requires the swimmer's own workout-management capability. A
+one-time goal can target an evaluated distance, a course-specific pace per 100,
+or both, due by an inclusive date. Date-range goals total recorded pool and
+open-water swims from inclusive first and last days. Range progress sums only
+native `original_distance` rows whose unit matches the goal, so meter and yard
+goals stay separate and land or unknown-unit distances are excluded. Calendar
+markers show one-time due dates and range boundaries. See
+[the standalone goals contract](docs/swim-goals.md).
+
 See [branding provenance](docs/BRANDING.md) and [carried-forward requirements](docs/ROADMAP.md).
 Tests activate the pinned plugin only in a disposable WordPress database. Synthetic
 mixed-owner/swim/land/event/plan fixtures cover owner isolation, separate totals,

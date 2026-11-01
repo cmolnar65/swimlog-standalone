@@ -8,6 +8,7 @@
 <nav class="view-switch" aria-label="Calendar view"><?php foreach(array('month'=>'Month','week'=>'Week') as $view=>$label): ?><a class="control" <?php if($calendar['view']===$view) echo 'aria-current="true"'; ?> href="<?php echo esc_url(CV::url($calendar['date'],$view)); ?>"><?php echo esc_html($label); ?></a><?php endforeach; ?></nav>
 <form method="get" class="date-jump"><label for="calendar-date">Go to date</label><input id="calendar-date" type="date" name="date" min="1900-01-01" max="2199-12-31" value="<?php echo esc_attr($calendar['date']->format('Y-m-d')); ?>"><input type="hidden" name="view" value="<?php echo esc_attr($calendar['view']); ?>"><button class="control">Go</button></form></div>
 <?php if(!empty($calendar['measurement_error'])): ?><p role="status"><?php echo esc_html($calendar['measurement_error']); ?></p><?php endif; ?>
+<?php if(!empty($calendar['goal_error'])): ?><p role="status"><?php echo esc_html($calendar['goal_error']); ?></p><?php endif; ?>
 <p class="calendar-legend"><span class="legend-pool">Recorded</span><span class="legend-plan">Planned</span><span class="legend-event">Event</span><span>★ Personal best</span><span class="legend-matched">Matched swim</span></p>
 <p class="plan-drag-status" data-plan-drag-status role="status" aria-live="polite" tabindex="-1"></p>
 <div class="weekday-head" aria-hidden="true"><?php for($d=0;$d<7;$d++): ?><span><?php echo esc_html(wp_date('D',$calendar['start']->modify('+'.$d.' days')->getTimestamp(),wp_timezone())); ?></span><?php endfor; ?></div>

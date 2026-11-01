@@ -41,6 +41,15 @@ try {
         header('Location: ' . $config['app_origin'] . '/?signed_out=1', true, 303); exit;
     }
     if(in_array($action,array('association_unlink','plan_delete'),true))require dirname(__DIR__).'/app/association-route.php';
+    if(in_array($action,array('goal_save','goal_delete'),true)) {
+        if($method!=='POST'){http_response_code(405);header('Allow: POST');exit('POST required.');}
+        if(!$owner){http_response_code(401);exit('Sign in again before changing a goal.');}
+        require_once dirname(__DIR__).'/app/Goals.php';
+        $input=wp_unslash($_POST);
+        $result=$action==='goal_save'?\SwimlogStandalone\Goals::submit($owner,$input,$_SERVER['HTTP_ORIGIN']??'',$config['app_origin']):\SwimlogStandalone\Goals::delete($owner,$input,$_SERVER['HTTP_ORIGIN']??'',$config['app_origin']);
+        if(is_wp_error($result)){http_response_code((int)($result->get_error_data()['status']??400));exit(esc_html($result->get_error_message()));}
+        header('Location: '.$config['app_origin'].$result['url'],true,303);exit;
+    }
     if(in_array($action,array('workout_write','workout_photo','workout_public_link'),true)||isset($_GET['edit_workout']))require dirname(__DIR__).'/app/workout-editor-route.php';
     if (in_array($action,array('settings_write','garmin_write'),true)||in_array($_GET['screen']??null,array('swimmer','locations','garmin_setup','garmin_activities','garmin_measurements','garmin_history'),true)) require dirname(__DIR__).'/app/configuration-route.php';
     if(in_array($action,array('pdf_upload','pdf_import'),true)||($_GET['screen']??null)==='training_pdf')require dirname(__DIR__).'/app/training-pdf-route.php';
@@ -126,7 +135,7 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness','compare','compare_bests','pace','repeats','efficiency','plan_evaluation','balance'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness','compare','compare_bests','pace','repeats','efficiency','plan_evaluation','balance','goals'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
@@ -192,6 +201,11 @@ try {
             require_once dirname(__DIR__).'/app/EventList.php';
             $eventList=\SwimlogStandalone\EventList::load($owner,$_GET);
             $returnUrl='/?screen=events';
+        } elseif ($screen==='goals') {
+            require_once dirname(__DIR__).'/app/Goals.php';
+            $goals=\SwimlogStandalone\Goals::load($owner);
+            if(is_wp_error($goals)){http_response_code((int)($goals->get_error_data()['status']??400));$goalError=$goals->get_error_message();$goals=array('goals'=>array(),'default_unit'=>'m');}
+            $returnUrl='/?screen=goals';
         } else {
             $calendar=\SwimlogStandalone\CalendarView::load($owner,$_GET);
             $returnUrl=is_wp_error($calendar)?'/':\SwimlogStandalone\CalendarView::url($calendar['date'],$calendar['view']);

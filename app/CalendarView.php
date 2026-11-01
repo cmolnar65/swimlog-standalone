@@ -40,16 +40,31 @@ final class CalendarView {
                 if (isset($days[$key])) $days[$key]['items'][] = self::item($row, $kind, $owner);
             }
         }
+        $goalError=null;
+        if(current_user_can('swimlog_manage_own_workouts')) {
+            require_once __DIR__.'/Goals.php';
+            $markers=Goals::calendarMarkers($owner,$start->format('Y-m-d'),$end->format('Y-m-d'));
+            if(is_wp_error($markers))$goalError=$markers->get_error_message();
+            else foreach($markers as$marker)if(isset($days[$marker['date']]))$days[$marker['date']]['items'][]=self::goalItem($marker);
+        }
         require_once __DIR__.'/CalendarMeasurements.php';
         $measurements=CalendarMeasurements::load($owner,$start->format('Y-m-d'),$end->format('Y-m-d'));$measurementError=null;
         if(is_wp_error($measurements))$measurementError=$measurements->get_error_message();
         else foreach($measurements as$key=>$measurement)if(isset($days[$key]))$days[$key]['items'][]=array('type'=>'measurement','measurement'=>$measurement);
         $previous = $view === 'month' ? $date->modify('first day of previous month') : $date->modify('-7 days');
         $next = $view === 'month' ? $date->modify('first day of next month') : $date->modify('+7 days');
-        return array('measurement_error'=>$measurementError,'days'=>$days, 'weeks'=>$data['weeks'], 'date'=>$date, 'view'=>$view, 'today'=>$today, 'previous'=>$previous, 'next'=>$next, 'start'=>$start, 'end'=>$end);
+        return array('measurement_error'=>$measurementError,'goal_error'=>$goalError,'days'=>$days, 'weeks'=>$data['weeks'], 'date'=>$date, 'view'=>$view, 'today'=>$today, 'previous'=>$previous, 'next'=>$next, 'start'=>$start, 'end'=>$end);
     }
     public static function url($date, $view) { return '/?' . http_build_query(array('date'=>$date->format('Y-m-d'), 'view'=>$view)); }
     public static function distance($value, $unit='m') { return $value === null ? 'Distance unavailable' : number_format_i18n((float)$value, (float)$value == floor((float)$value) ? 0 : 1) . ' ' . $unit; }
+    private static function goalItem($goal) {
+        $markers=array('goal_due'=>'Due','goal_start'=>'Starts','goal_end'=>'Ends','goal_start_end'=>'Starts and ends');
+        $period=$goal['goal_type']==='period_distance';
+        $target=$period?Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit']:Goals::singleTarget($goal);
+        if($period)$progress=Goals::formatNumber((float)($goal['progress_native']??0)).' / '.Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit'];
+        else $progress=$goal['best_pace_ms']!==null?'Best pace '.Goals::formatPace($goal['best_pace_ms']).' / 100 '.$goal['course_unit']:'No qualifying performance yet';
+        return array('type'=>'goal','id'=>(int)$goal['id'],'label'=>$goal['title'],'marker'=>$markers[$goal['marker']]??'Goal','target'=>$target,'progress'=>$progress,'status'=>Goals::statusLabel($goal['status']));
+    }
     private static function item($row, $kind, $owner) {
         $labels = array('pool'=>'Pool swim','open_water'=>'Open-water swim','running'=>'Run','walking'=>'Walk');
         if ($kind === 'events') return array('id'=>(int)$row['id'],'label'=>$row['event_name'], 'type'=>'event', 'distance'=>self::distance($row['distance_value'], $row['course_unit'] ?: 'm'), 'time'=>$row['event_time'], 'location'=>$row['location'], 'pb'=>false, 'matched'=>false, 'status'=>'Event', 'instructions'=>'');

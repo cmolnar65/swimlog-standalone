@@ -1,0 +1,39 @@
+<?php
+if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable test flag required.');
+require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/Goals.php';require_once dirname(__DIR__).'/app/CalendarView.php';
+use SwimlogStandalone\Auth;use SwimlogStandalone\Goals;use SwimLogEvaluation\Database;use SwimLogEvaluation\Swim_Goals;
+$owner=wp_create_user('standalone_goal_owner_'.wp_generate_password(8,false),wp_generate_password(32));$other=wp_create_user('standalone_goal_other_'.wp_generate_password(8,false),wp_generate_password(32));
+if(is_wp_error($owner)||is_wp_error($other))throw new RuntimeException('Synthetic goal users could not be created.');
+$owner=(int)$owner;$other=(int)$other;(new WP_User($owner))->add_cap('swimlog_view_own_results');(new WP_User($owner))->add_cap('swimlog_manage_own_workouts');(new WP_User($owner))->add_cap('swimlog_manage_all_users');(new WP_User($other))->add_cap('swimlog_view_own_results');(new WP_User($other))->add_cap('swimlog_manage_own_workouts');
+wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=wp_generate_auth_cookie($owner,time()+3600,'logged_in');
+$now=current_time('mysql');$today=wp_date('Y-m-d',null,wp_timezone());$start=(new DateTimeImmutable($today,wp_timezone()))->modify('-3 days')->format('Y-m-d');$end=(new DateTimeImmutable($today,wp_timezone()))->modify('-1 day')->format('Y-m-d');$due=(new DateTimeImmutable($today,wp_timezone()))->modify('+7 days')->format('Y-m-d');$workoutIds=array();$goalIds=array();$checks=0;$check=static function($ok,$message)use(&$checks){++$checks;if(!$ok)throw new RuntimeException($message);};
+$insertWorkout=static function($user,$type,$date,$distance,$unit)use($now,&$workoutIds){global $wpdb;$row=array('user_id'=>$user,'workout_type'=>$type,'workout_start'=>$date.' 08:00:00','total_distance_m'=>is_numeric($distance)?($unit==='yd'?(float)$distance*0.9144:(float)$distance):null,'original_distance'=>$distance,'original_distance_unit'=>$unit,'pool_length_unit'=>$type==='pool'?$unit:null,'created_at'=>$now,'updated_at'=>$now);Database::write('insert',Database::table('workouts'),$row);$id=(int)$wpdb->insert_id;$workoutIds[]=array($id,(int)$user);return$id;};
+$create=static function($input)use($owner,$due,$today,&$goalIds){$input+=array('goal_type'=>Swim_Goals::SINGLE,'course_unit'=>'m','start_date'=>$today,'end_date'=>$due);$r=Goals::submit($owner,array_merge($input,array('nonce'=>wp_create_nonce('standalone_goal_save'))),'https://swimlog.example.test','https://swimlog.example.test');if(is_wp_error($r))return$r;global $wpdb;$goalIds[]=(int)$wpdb->insert_id;return (int)$wpdb->insert_id;};
+try {
+    $insertWorkout($owner,'pool',$start,1000,'m');$insertWorkout($owner,'open_water',$end,500,'m');$insertWorkout($owner,'pool',$end,1000,'yd');$insertWorkout($owner,'running',$end,5000,'m');$insertWorkout($owner,'pool',$end,null,null);$insertWorkout($other,'pool',$end,4000,'m');
+    $mGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'m','target_distance'=>'1500','start_date'=>$start,'end_date'=>$end,'title'=>'Synthetic meter period'));$yGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'yd','target_distance'=>'1200','start_date'=>$start,'end_date'=>$end,'title'=>'Synthetic yard period'));
+    $check(is_int($mGoal)&&is_int($yGoal),'Both native-course date-range goals save.');$loaded=Goals::load($owner);$byId=array();foreach($loaded['goals']as$g)$byId[$g['id']]=$g;
+    $check(abs($byId[$mGoal]['progress_native']-1500)<0.001&&$byId[$mGoal]['status']==='achieved','Meter goal counts pool and open-water meters, and excludes land.');
+    $check(abs($byId[$yGoal]['progress_native']-1000)<0.001&&$byId[$yGoal]['status']==='in_progress','Yard goal counts only native yard rows; it does not add meter or land distances.');
+    $swim=$insertWorkout($owner,'pool',$today,1500,'m');Database::write('insert',Database::table('performances'),array('user_id'=>$owner,'workout_id'=>$swim,'distance_value'=>1500,'course_unit'=>'m','stroke'=>'BR','duration_ms'=>1700000,'evaluation_version'=>'synthetic','achieved_at'=>$now,'created_at'=>$now));
+    $distanceOnly=$create(array('course_unit'=>'m','target_distance_value'=>'1500','target_pace'=>''));$paceOnly=$create(array('course_unit'=>'yd','target_distance_value'=>'','target_pace'=>'1:00.00'));
+    $ydSwim=$insertWorkout($owner,'pool',$today,400,'yd');Database::write('insert',Database::table('performances'),array('user_id'=>$owner,'workout_id'=>$ydSwim,'distance_value'=>400,'course_unit'=>'yd','stroke'=>'FR','duration_ms'=>240000,'evaluation_version'=>'synthetic','achieved_at'=>$now,'created_at'=>$now));
+    $both=$create(array('course_unit'=>'m','target_distance_value'=>'1500','target_pace'=>'2:00.00'));
+    $check(is_int($distanceOnly)&&is_int($paceOnly)&&is_int($both),'Distance-only, pace-only, and combined one-time goals save.');$loaded=Goals::load($owner);$byId=array();foreach($loaded['goals']as$g)$byId[$g['id']]=$g;
+    $check($byId[$distanceOnly]['status']==='achieved'&&$byId[$both]['status']==='achieved','Exact meter distance performance qualifies at any pace and stroke.');
+    $check($byId[$paceOnly]['status']==='achieved'&&$byId[$paceOnly]['progress_distance_value']===400,'Pace-only goal checks evaluated yard pace in the selected course.');
+    $check(is_wp_error(Goals::submit($owner,array('nonce'=>wp_create_nonce('standalone_goal_save'),'goal_type'=>Swim_Goals::SINGLE,'course_unit'=>'m','target_distance_value'=>'','target_pace'=>'','end_date'=>$due),'https://swimlog.example.test','https://swimlog.example.test')),'Empty one-time targets are rejected.');
+    $foreign=Swim_Goals::create($other,array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'m','target_distance'=>'10','start_date'=>$start,'end_date'=>$end));$check(!is_wp_error($foreign),'Foreign synthetic goal created for isolation check.');
+    $check(is_wp_error(Goals::load($other)),'Manage-all capability cannot load another owner goals in standalone.');
+    $delete=Goals::delete($owner,array('nonce'=>wp_create_nonce('standalone_goal_delete'),'goal_id'=>(string)$foreign['id']),'https://swimlog.example.test','https://swimlog.example.test');$check(is_wp_error($delete),'Owner-scoped deletion cannot delete another swimmer goal.');
+    $markers=Goals::calendarMarkers($owner,$start,$due);$pairs=array_map(static function($m){return$m['id'].':'.$m['marker'];},$markers);
+    $check(in_array($mGoal.':goal_start',$pairs,true)&&in_array($mGoal.':goal_end',$pairs,true)&&in_array($both.':goal_due',$pairs,true),'Calendar marks date-range boundaries and one-time due dates.');
+    $htmlGoals=$loaded;ob_start();require dirname(__DIR__).'/app/goals.php';$html=ob_get_clean();$check(strpos($html,'Set Goal')!==false&&strpos($html,'List Goals')!==false&&strpos($html,'Synthetic meter period')!==false,'Standalone Goals screen renders set/list controls and live progress.');
+    WP_CLI::success('Standalone synthetic goals storage, native-course progress, one-time targets, ownership and calendar checks passed '.$checks.' assertions.');
+} finally {
+    global $wpdb;
+    foreach($goalIds as$id)Database::write('delete',Database::table('goals'),array('id'=>$id,'user_id'=>$owner));
+    if(isset($foreign)&&!is_wp_error($foreign))Swim_Goals::delete_for_user($foreign['id'],$other);
+    foreach($workoutIds as$entry){$id=$entry[0];$user=$entry[1];Database::write('delete',Database::table('performances'),array('workout_id'=>$id,'user_id'=>$user));Database::write('delete',Database::table('workouts'),array('id'=>$id,'user_id'=>$user));}
+    require_once ABSPATH.'wp-admin/includes/user.php';wp_delete_user($owner);wp_delete_user($other);wp_set_current_user(0);unset($_COOKIE[LOGGED_IN_COOKIE]);
+}

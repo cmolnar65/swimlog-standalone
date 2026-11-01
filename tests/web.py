@@ -84,6 +84,9 @@ check('expires=' not in auth.lower())
 login_failure(request(app, '/?action=callback', {'code': code}, cookie='__Host-swimlog-state=' + verifier, origin=main_origin))
 status, headers, body = request(app, cookie=main_cookie)
 check(status == 200 and 'Welcome,' in body and '&lt;script&gt;' in body and '<script>synthetic</script>' not in body)
+status, headers, goals_body = request(app, '/?screen=goals', cookie=main_cookie)
+check(status == 200 and 'Goals' in goals_body and 'Set Goal' in goals_body and 'List Goals' in goals_body)
+check('goal_save' in goals_body and 'goal_delete' in goals_body and 'target_distance' in goals_body)
 check(request(app, cookie=fixture['name'] + '=' + fixture['other'])[0] == 403)
 detail_nonce = re.search(r'data-detail-nonce="([^"]+)"', body)[1]
 ids = fixture['workouts']
