@@ -125,7 +125,7 @@ try {
     $signedIn = $owner > 0 && (isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm)||!isset($_GET['login_error']));
     if ($signedIn) {
         $screen=(isset($eventForm)||isset($planForm)||isset($planActionForm)||isset($planMatchForm))?'calendar':($_GET['screen']??'calendar');
-        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool'),true)) { http_response_code(400); exit('Unknown screen.'); }
+        if (!is_string($screen)||!in_array($screen,array('calendar','log','events','bests','volume','trends','pool','readiness'),true)) { http_response_code(400); exit('Unknown screen.'); }
         $intents=array('plan','workout','edit_plan','plan_action','match_plan','event','edit_event','event_result');$intentCount=0;
         foreach($intents as$key)if(isset($_GET[$key]))++$intentCount;
         if($intentCount>1) { http_response_code(400); exit('Choose one calendar action.'); }
@@ -139,6 +139,11 @@ try {
             $returnUrl=$planActionForm['context']['url'];
         } elseif (isset($planForm)) {
             $returnUrl=$planForm['context']['url'];
+        } elseif($screen==='readiness') {
+            require_once dirname(__DIR__).'/app/SwimEvaluation.php';
+            $evaluation=\SwimlogStandalone\SwimEvaluation::load($owner,$_GET);
+            if(is_wp_error($evaluation))http_response_code((int)($evaluation->get_error_data()['status']??400));
+            $returnUrl=is_wp_error($evaluation)?'/?screen=readiness':\SwimlogStandalone\SwimEvaluation::url($evaluation);
         } elseif(in_array($screen,array('trends','pool'),true)) {
             require_once dirname(__DIR__).'/app/AnalyticsReports.php';
             $analyticsReport=\SwimlogStandalone\AnalyticsReports::load($owner,$screen,$_GET);

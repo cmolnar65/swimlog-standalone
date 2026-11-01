@@ -133,6 +133,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/readiness-web.py
           if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
             timeout --signal=TERM --kill-after=15s 240s npm install --no-save --no-package-lock playwright@1.62.1
             timeout --signal=TERM --kill-after=15s 300s npx playwright install --with-deps chromium firefox webkit
@@ -198,6 +201,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/readiness-web.py
           if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/browser.cjs
@@ -234,6 +240,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
           python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/readiness-web.py
           if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs

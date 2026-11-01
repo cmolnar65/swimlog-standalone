@@ -597,3 +597,9 @@ manual workflow dispatch with `run_browser=true`; its default is false. Request
 browser checks explicitly when they are needed. HTTP tests use direct requests
 to a disposable PHP server and do not launch a browser. No live site is tested
 or deployed by these checks.
+
+### Swim Evaluation / Race Readiness
+
+Evaluation → Swim Evaluation (`/?screen=readiness`) provides private event-specific swimming evidence using the installed plugin’s `Race_Readiness::for_event()` service. Select an upcoming/today’s event and a 1–365 calendar-day lookback (default 42). Event selection is paginated, with direct event-detail links into evaluation. Matching pool training, exact-distance recent performances, lifetime PB, recent changes and supporting swim details come from plugin services. Course units and strokes remain separate; land activities and measurements do not contribute. This is descriptive evidence, not a race prediction or readiness score. Past event results remain under Events.
+
+The screen requires the authenticated owner’s results and workout-management capabilities, a completed plugin migration and the Race Readiness service. It adds no writes, schema changes or new calculation/storage system. All event/workout lookups remain owner-scoped; admin privileges do not expose another swimmer’s evaluation. Responses use the existing authenticated no-store policy. The synthetic integration/HTTP suites cover native evidence equivalence, course/stroke/window boundaries, pagination, invalid inputs, private/foreign access and missing migration. Browser checks remain explicit opt-in.
