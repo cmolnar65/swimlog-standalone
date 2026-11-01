@@ -43,6 +43,11 @@ final class WorkoutAssociations {
         if(($input['confirm']??'')!=='1')return self::error('Confirm removal of this association.',422);
         global $wpdb;$lock='swimlog_match_'.substr(hash('sha256',DB_NAME.'|'.$wpdb->prefix.'|'.$owner),0,48);
         if((string)Database::read('get_var',$wpdb->prepare('SELECT GET_LOCK(%s, 0)',$lock))!=='1')return self::error('Another association is changing. Reload and try again.',409);
+        $structureLock='standalone_structure_'.substr(hash('sha256',DB_NAME.'|'.$wpdb->prefix.'|'.$owner),0,42);
+        if((string)Database::read('get_var',$wpdb->prepare('SELECT GET_LOCK(%s, 0)',$structureLock))!=='1') {
+            Database::read('get_var',$wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));
+            return self::error('Another prescription is changing. Reload and try again.',409);
+        }
         try {
             $state=self::forPlan($owner,$id);if(is_wp_error($state))return $state;
             if(!hash_equals($state['revision'],$input['revision']??'')||(string)$state['workout_id']!==($input['workout_id']??''))return self::error('The association changed. Reload and review it before unlinking.',409);
@@ -54,6 +59,6 @@ final class WorkoutAssociations {
             $plan=Plans::get_for_user((int)$id,$owner);
             if(($op==='match'&&($after['workout_id']||$plan->status!=='planned'))||($op==='structure'&&$after['structure']))return self::error('The association could not be removed. Reload to review its current state.',503);
             return array('url'=>'/?'.($input['return_to']==='workout'?'workout='.$state['workout_id']:'plan='.(int)$id).'&association_unlinked='.$op);
-        } finally {Database::read('get_var',$wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));}
+        } finally {Database::read('get_var',$wpdb->prepare('SELECT RELEASE_LOCK(%s)',$structureLock));Database::read('get_var',$wpdb->prepare('SELECT RELEASE_LOCK(%s)',$lock));}
     }
 }

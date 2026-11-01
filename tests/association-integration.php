@@ -11,6 +11,13 @@ $in=unlink_input($owner,$a['plan'],'structure');
 foreach(array('nonce','revision','confirm')as$key){$bad=$in;unset($bad[$key]);$check(is_wp_error(unlink_submit($owner,$bad)));}
 $check(is_wp_error(unlink_submit($owner,$in+array('user_id'=>'1'))));$check(is_wp_error(A::submit($owner,$in,'https://evil.example.test','https://swimlog.example.test')));
 $check(is_wp_error(unlink_submit(0,$in)));$check(is_wp_error(A::forPlan($owner+1,$a['plan'])));
+$db=$GLOBALS['wpdb'];$blocker=new wpdb(DB_USER,DB_PASSWORD,DB_NAME,DB_HOST);
+foreach(array('swimlog_match_'.substr(hash('sha256',DB_NAME.'|'.$db->prefix.'|'.$owner),0,48),'standalone_structure_'.substr(hash('sha256',DB_NAME.'|'.$db->prefix.'|'.$owner),0,42))as$lock) {
+ $check((string)$blocker->get_var($blocker->prepare('SELECT GET_LOCK(%s, 0)',$lock))==='1');
+ try {$busy=unlink_submit($owner,$in);$check(is_wp_error($busy)&&$busy->get_error_data()['status']===409);}
+ finally {$blocker->get_var($blocker->prepare('SELECT RELEASE_LOCK(%s)',$lock));}
+}
+$blocker->close();
 $denyHistory=static function($check,$postId,$key)use($a){return (int)$postId===$a['structure']&&$key===S::META_RECORDED?false:$check;};
 add_filter('update_post_metadata',$denyHistory,10,3);$check(is_wp_error(unlink_submit($owner,$in)));remove_filter('update_post_metadata',$denyHistory,10);
 $check(L::for_plan($a['plan'],$owner)!==null&&(int)P::get_for_user($a['plan'],$owner)->completed_workout_id===$a['workout']);

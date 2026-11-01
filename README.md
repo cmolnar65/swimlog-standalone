@@ -535,7 +535,7 @@ and the prescription document are not rewritten by this adapter.
 
 These operations require the actual cookie owner, results and workout-management
 capabilities, exact origin, operation-specific nonce, explicit confirmation and a
-fresh association HMAC. Competing standalone matches use the same owner lock;
+fresh association HMAC. Competing standalone matches and structured edits use their existing owner locks;
 other plugin interfaces retain their native boundaries. GET never unlinks, and
 stale requests require reload/review. The installed plugin must expose
 for_completed_workout and preserve_recorded_lock (tested against plugin develop
