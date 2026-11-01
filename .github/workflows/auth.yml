@@ -117,6 +117,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/volume-delete-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           python3 tests/volume-delete-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/analytics-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             npm install --no-save --no-package-lock playwright@1.62.1
             npx playwright install --with-deps chromium firefox webkit
@@ -138,6 +141,8 @@ jobs:
               wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
               wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+              SWIMLOG_BROWSER="$browser" node tests/analytics-browser.cjs
               SWIMLOG_BROWSER="$browser" node tests/volume-delete-browser.cjs
               wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
               SWIMLOG_BROWSER="$browser" node tests/association-browser.cjs
@@ -177,6 +182,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/volume-delete-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           python3 tests/volume-delete-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/analytics-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium node tests/browser.cjs
@@ -210,6 +218,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/volume-delete-integration.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
           python3 tests/volume-delete-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/analytics-web.py
           if [ '${{ matrix.php }}' = '8.3' ]; then
             wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
             SWIMLOG_BROWSER=chromium node tests/settings-browser.cjs

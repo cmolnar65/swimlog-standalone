@@ -28,3 +28,5 @@
 .workout-photo-slot{display:grid;gap:10px;margin:18px 0;min-width:0}.workout-photo-slot input[type=file]{max-width:100%;min-width:0}.workout-photo-preview{max-width:180px;max-height:180px;width:auto;height:auto;border-radius:12px}.workout-conversion-text{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
 
 .sharing-controls{margin:24px 0;padding:20px;border:1px solid #cbd8ea;border-radius:16px}.public-route{display:block;width:100%;max-width:600px;height:auto;margin:auto}.sharing-controls input[readonly]{width:100%;min-width:0}
+
+.swim-trend-chart{display:block;width:100%;max-height:240px;margin:16px auto}.analytics-table th,.analytics-table td{white-space:nowrap}

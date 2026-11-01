@@ -561,3 +561,28 @@ keeps recorded workouts and structured prescriptions, and preserves recorded-his
 locks. It never deletes the underlying recorded workout. If deletion fails after a
 successful detach, the plan remains and the user must reload/review the current
 association state before retrying. No plugin/schema change or deployment is included.
+
+## Evaluation → Training Trends and Pool Analytics
+
+`/?screen=trends` calls `Training_Trends::for_user()` for current/previous rolling
+period comparisons, frequency, recorded-week/month summaries, pool/open-water
+breakdowns, and native course/stroke volume. Overall distance uses normalized
+meters; course/stroke tables retain native units. The bar chart is presentation
+of returned weekly values only: absent weeks are not filled or estimated. The
+plugin owns its rolling-average definition and moving-time/elapsed fallback.
+These reports do not infer physiological load, recovery, fitness or injury risk.
+
+`/?screen=pool` calls `Pool_Analytics::for_user()` for recorded active pool lengths.
+Course, pool length and stroke remain separate. Summary/monthly metrics include
+pace and SWOLF, optional consistency, stroke counts/coverage and normalized
+strokes per 25. Missing values stay missing; metric help explains limitations.
+The app adapts the plugin's report presentation without executing wp-admin
+handlers, loading admin/theme assets, or duplicating calculation logic.
+
+Both pages require the actual cookie owner, existing results and workout-management
+capabilities, valid installed schema/services, and strict 1–24 month filters.
+They remain private/no-store and exclude running, walking and measurements.
+Only Training Trends includes open-water swims. Filters do not write preferences.
+Related-report links carry applicable period/course/stroke filters. Responsive
+scroll regions and tables remain available beside the weekly visualization.
+No plugin/schema change, public aggregate, release or deployment is included.
