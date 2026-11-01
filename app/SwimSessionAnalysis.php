@@ -31,7 +31,7 @@ final class SwimSessionAnalysis {
             // Candidate sets preserve recorded lap order; never split a long lap into invented repeats.
             $runs=array();$run=array();$key=null;
             foreach($laps as$l){
-                if($l->distance_m!==null&&(float)$l->distance_m===0){if($run){$last=count($run)-1;$ms=$l->elapsed_time_ms;$run[$last]['rest_seen']=true;if(is_numeric($ms)&&(float)$ms>=0&&empty($run[$last]['rest_unknown']))$run[$last]['rest']=($run[$last]['rest']??0)+(int)$ms;else{$run[$last]['rest_unknown']=true;$run[$last]['rest']=null;}}continue;}
+                if($l->distance_m!==null&&(float)$l->distance_m===0.0){if($run){$last=count($run)-1;$ms=$l->elapsed_time_ms;$run[$last]['rest_seen']=true;if(is_numeric($ms)&&(float)$ms>=0&&empty($run[$last]['rest_unknown']))$run[$last]['rest']=($run[$last]['rest']??0)+(int)$ms;else{$run[$last]['rest_unknown']=true;$run[$last]['rest']=null;}}continue;}
                 $stroke=strtoupper((string)$l->stroke);$distance=$unit==='yd'?(float)$l->distance_m/0.9144:(float)$l->distance_m;
                 if(!self::positive($distance)||!in_array($stroke,array('FR','BR','BACK','FLY'),true)){if($run)$runs[]=$run;$run=array();$key=null;continue;}
                 $basis=self::positive($l->moving_time_ms)?'Recorded lap moving time':'Recorded lap elapsed time (may include in-lap rest)';$ms=self::positive($l->moving_time_ms)?(int)$l->moving_time_ms:(self::positive($l->elapsed_time_ms)?(int)$l->elapsed_time_ms:null);
