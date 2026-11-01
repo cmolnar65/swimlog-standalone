@@ -213,7 +213,7 @@ copying are also available through protected standalone date-selection forms.
 
 ## Create and edit planned workouts
 
-Plan workout is available in the calendar toolbar and on today/future day cards.
+Plan Workout is available from the Workouts menu and on today/future day cards.
 An editable plan's details link to a standalone form that also works without
 JavaScript. The form retains submitted values on validation errors, supports
 meters/yards and exact fractional durations, and uses Post/Redirect/Get after
