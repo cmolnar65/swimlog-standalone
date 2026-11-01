@@ -10,7 +10,7 @@ final class Goals {
     private static function ready($owner) {
         if (!Auth::requireCapability($owner) || Auth::cookieUser() !== (int)$owner || !current_user_can('swimlog_manage_own_workouts')) return new \WP_Error('goals_forbidden', 'Goal access denied.', array('status'=>403));
         if (!defined('SWIMLOG_EVALUATION_DIR') || !defined('SWIMLOG_EVALUATION_DB_VERSION') || version_compare((string)get_option('swimlog_db_version','0'), SWIMLOG_EVALUATION_DB_VERSION, '<')) return new \WP_Error('goals_plugin', 'The Swim Log installation must be updated before goals can be used.', array('status'=>503));
-        foreach (array('class-database.php','class-swim-goals.php','class-evaluator.php','class-workout.php') as $file) {
+        foreach (array('class-database.php','class-swim-goals.php','class-evaluator.php') as $file) {
             $path=SWIMLOG_EVALUATION_DIR.'includes/'.$file;
             if (!is_readable($path)) return new \WP_Error('goals_service', 'A WordPress Swim Log goals service is unavailable.', array('status'=>503));
             require_once $path;
@@ -20,9 +20,10 @@ final class Goals {
 
     public static function load($owner) {
         $ready=self::ready($owner); if (is_wp_error($ready)) return $ready;
-        $rows=\SwimLogEvaluation\Swim_Goals::list_for_user($owner);
-        foreach ($rows as &$goal) $goal=self::progress($goal);
-        unset($goal);
+        global $wpdb;
+        $table=\SwimLogEvaluation\Database::table('goals');
+        $rows=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare('SELECT * FROM %i WHERE user_id=%d ORDER BY start_date DESC,id DESC LIMIT 200',$table,(int)$owner));
+        $rows=array_map(static function($row){return self::progress(self::normalizeRow($row));},(array)$rows);
         return array('goals'=>$rows,'default_unit'=>self::defaultUnit($owner));
     }
 
@@ -102,12 +103,20 @@ final class Goals {
 
     public static function calendarMarkers($owner,$start,$end) {
         $ready=self::ready($owner); if(is_wp_error($ready))return $ready;
-        $markers=\SwimLogEvaluation\Swim_Goals::calendar_markers($owner,$start,$end);
-        foreach($markers as &$marker) {
-            $goal=\SwimLogEvaluation\Swim_Goals::get_for_user($marker['id'],$owner);
-            if($goal)$marker=array_merge($marker,self::progress($goal));
+        global $wpdb;
+        $table=\SwimLogEvaluation\Database::table('goals');
+        $rows=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare("SELECT * FROM %i WHERE user_id=%d AND ((goal_type=%s AND end_date BETWEEN %s AND %s) OR (goal_type=%s AND (start_date BETWEEN %s AND %s OR end_date BETWEEN %s AND %s))) ORDER BY start_date ASC,id ASC",$table,(int)$owner,self::SINGLE,$start,$end,self::PERIOD,$start,$end,$start,$end));
+        $markers=array();
+        foreach((array)$rows as$row) {
+            $goal=self::progress(self::normalizeRow($row));
+            if($goal['goal_type']===self::SINGLE) {$markers[]=self::calendarRow($goal,$goal['end_date'],'goal_due');continue;}
+            if($goal['start_date']===$goal['end_date'])$markers[]=self::calendarRow($goal,$goal['start_date'],'goal_start_end');
+            else {
+                if($goal['start_date']>=$start&&$goal['start_date']<=$end)$markers[]=self::calendarRow($goal,$goal['start_date'],'goal_start');
+                if($goal['end_date']>=$start&&$goal['end_date']<=$end)$markers[]=self::calendarRow($goal,$goal['end_date'],'goal_end');
+            }
         }
-        unset($marker); return $markers;
+        return $markers;
     }
 
     public static function formatPace($milliseconds) {
@@ -128,6 +137,14 @@ final class Goals {
     private static function parsePace($value) { if(!preg_match('/^(\d{1,3}):([0-5]\d)(?:\.(\d{1,2}))?$/',trim((string)$value),$m))return null;$fraction=isset($m[3])?(int)str_pad($m[3],2,'0'):0;return(((int)$m[1]*60+(int)$m[2])*1000)+$fraction*10; }
     private static function validDate($value) { if(!is_string($value)||!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$value))return false;$date=\DateTimeImmutable::createFromFormat('!Y-m-d',$value,wp_timezone());$errors=\DateTimeImmutable::getLastErrors();return $date&&($errors===false||(!$errors['warning_count']&&!$errors['error_count']))&&$date->format('Y-m-d')===$value?$value:false; }
     private static function status($goal,$achieved) { if($achieved)return 'achieved';$today=wp_date('Y-m-d',null,wp_timezone());if($today<$goal['start_date'])return 'upcoming';if($today>$goal['end_date'])return 'missed';return 'in_progress'; }
+    private static function normalizeRow($row) {
+        $goal=is_object($row)?get_object_vars($row):(array)$row;
+        $goal['id']=(int)($goal['id']??0);$goal['user_id']=(int)($goal['user_id']??0);
+        foreach(array('target_distance_value','target_pace_ms')as$key)$goal[$key]=($goal[$key]??null)===null?null:(int)$goal[$key];
+        $goal['target_distance_m']=($goal['target_distance_m']??null)===null?null:(float)$goal['target_distance_m'];
+        return $goal;
+    }
+    private static function calendarRow($goal,$date,$marker) { $goal['date']=$date;$goal['marker']=$marker;return $goal; }
     private static function defaultUnit($owner) { $class='SwimLogEvaluation\\Unit_Preferences';if(!class_exists($class,false)){ $path=SWIMLOG_EVALUATION_DIR.'includes/class-unit-preferences.php';if(is_readable($path))require_once $path;}if(class_exists($class,false)){$prefs=$class::get($owner);if(in_array($prefs['swim_course']??null,array('m','yd'),true))return $prefs['swim_course'];}return 'm'; }
     private static function error($message,$status=400) { return new \WP_Error('standalone_goal', $message, array('status'=>$status)); }
 }
