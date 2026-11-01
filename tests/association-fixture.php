@@ -8,8 +8,11 @@ $old=get_user_meta($owner,'synthetic_association_plans',true);if(is_array($old))
 $form=\SwimlogStandalone\StructuredWorkouts::editor($owner,'new');$pairs=array();
 foreach(array('pool','open_water')as$type){
  $plan=Plans::save($owner,array('title'=>'Synthetic unlink '.$type,'planned_date'=>'2026-01-01','workout_type'=>$type,'workout_instructions'=>'Synthetic unchanged instructions'));
+ if(is_wp_error($plan))throw new RuntimeException('Association plan seed: '.$plan->get_error_code());
  $structure=Store::save($owner,'Synthetic unlink prescription '.$type,$form['document']);
- if(is_wp_error($plan)||is_wp_error($structure)||is_wp_error(Links::attach($plan,$structure,$owner))||is_wp_error(Plans::associate_completed_workout($plan,$owner,$f['ids'][$type])))throw new RuntimeException('Synthetic association seed failed.');
+ if(is_wp_error($structure))throw new RuntimeException('Association structure seed: '.$structure->get_error_code());
+ $attached=Links::attach($plan,$structure,$owner);if(is_wp_error($attached))throw new RuntimeException('Association attach seed: '.$attached->get_error_code());
+ $matched=Plans::associate_completed_workout($plan,$owner,$f['ids'][$type]);if(is_wp_error($matched))throw new RuntimeException('Association match seed: '.$matched->get_error_code());
  $pairs[$type]=array('plan'=>$plan,'structure'=>$structure,'workout'=>$f['ids'][$type]);
 }
 update_user_meta($owner,'synthetic_association_plans',$pairs);$f['pairs']=$pairs;file_put_contents('/tmp/swimlog-associations.json',wp_json_encode($f));chmod('/tmp/swimlog-associations.json',0600);
