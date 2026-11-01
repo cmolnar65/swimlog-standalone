@@ -58,7 +58,7 @@ def master(enabled):
     status,_,body=req('/?screen=swimmer',cookie=f['cookie']);check(status==200)
     tag=next(tag for tag in re.findall(r'<form\b.*?</form>',body,re.S)if 'value="swimmer_save"' in tag)
     data={k:html.unescape(v)for k,v in re.findall(r'<input type="hidden" name="([^"]+)" value="([^"]*)"',tag)}
-    data.update({'birthdate':'','calendar_first_day':'sunday','training_volume_months':'3'})
+    data.update({'birthdate':'','calendar_first_day':'sunday','training_volume_months':'3','swim_course':'m','running':'km','walking':'km','cycling':'km','weight':'kg'})
     if enabled:data['public_results']='1'
     check(req('/?action=settings_write',data,cookie=f['cookie'])[0]==303)
 master(False)

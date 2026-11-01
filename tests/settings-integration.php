@@ -8,11 +8,20 @@ function settings_input($owner,$op,$screen,$id='new'){return array('operation'=>
 function settings_submit($owner,$input){return S::submit($owner,$input,'https://swimlog.example.test','https://swimlog.example.test');}
 $check(S::ready($owner)===true);API::remove_key($owner);$check(!S::verified($owner)&&is_wp_error(G::ready($owner,'garmin_activities')));
 update_user_meta($owner,'swimlog_public_routes','1');
-$input=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'1965-01-02','calendar_first_day'=>'monday','training_volume_months'=>'6');
+$unitInput=array('swim_course'=>'yd','running'=>'mi','walking'=>'km','cycling'=>'mi','weight'=>'lb','show_secondary'=>'1');
+$input=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'1965-01-02','calendar_first_day'=>'monday','training_volume_months'=>'6')+$unitInput;
 $post=$_POST;$request=$_REQUEST;$r=settings_submit($owner,$input);$check(isset($r['url'])&&$_POST===$post&&$_REQUEST===$request);$prefs=S::preferences($owner);$check($prefs['birthdate']==='1965-01-02'&&$prefs['calendar_first_day']==='monday'&&$prefs['public_results']==='0');
+$check($prefs['swim_course']==='yd'&&$prefs['running']==='mi'&&$prefs['walking']==='km'&&$prefs['cycling']==='mi'&&$prefs['weight']==='lb'&&$prefs['show_secondary']===true);
+$expectedUnits=$unitInput;$expectedUnits['show_secondary']=true;$otherUnits=\SwimLogEvaluation\Unit_Preferences::get((int)get_user_by('login','synthetic_swimmer')->ID);
+$check(\SwimLogEvaluation\Unit_Preferences::get($owner)===$expectedUnits && $otherUnits!==$expectedUnits);
 $check(get_user_meta($owner,'swimlog_public_routes',true)==='1');
 $check(is_wp_error(settings_submit($owner,$input)));
-$bad=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'2026-02-30','calendar_first_day'=>'saturday','training_volume_months'=>'4','public_results'=>'1');$check(is_wp_error(settings_submit($owner,$bad))&&S::preferences($owner)===$prefs);
+$unchecked=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'1965-01-02','calendar_first_day'=>'monday','training_volume_months'=>'6')+array_diff_key($unitInput,array('show_secondary'=>true));
+$r=settings_submit($owner,$unchecked);$check(isset($r['url'])&&S::preferences($owner)['show_secondary']===false);$prefs=S::preferences($owner);
+$bad=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'2026-02-30','calendar_first_day'=>'saturday','training_volume_months'=>'4','public_results'=>'1')+array_replace($unitInput,array('swim_course'=>'feet'));
+$check(is_wp_error(settings_submit($owner,$bad))&&S::preferences($owner)===$prefs);
+$bad=settings_input($owner,'swimmer_save','swimmer')+array('birthdate'=>'2026-02-30','calendar_first_day'=>'saturday','training_volume_months'=>'4','public_results'=>'1')+$unitInput;
+$check(is_wp_error(settings_submit($owner,$bad))&&S::preferences($owner)===$prefs);
 $loc=settings_input($owner,'location_save','locations')+array('location_id'=>'new','name'=>'Synthetic settings pool','pool_length'=>'25','pool_unit'=>'yd','latitude'=>'40.0','longitude'=>'-105.0','notes'=>'PRIVATE_LOCATION_SETTING_CANARY');
 $r=settings_submit($owner,$loc);$check(isset($r['url']));parse_str(parse_url($r['url'],PHP_URL_QUERY),$query);$id=$query['edit_location'];$row=\SwimLogEvaluation\Location::get_for_user($id,$owner);$check($row&&(float)$row->pool_length_m===22.86);
 $other=(int)get_user_by('login','synthetic_swimmer')->ID;$check(is_wp_error(S::location($other,$id)));

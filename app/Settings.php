@@ -8,6 +8,7 @@ use SwimLogEvaluation\Importer;
 final class Settings {
     const VERIFIED_KEY='standalone_garmin_verified_credential';
     const PREFS=array('birthdate','calendar_first_day','training_volume_months','public_results','public_ows_routes','rest_api_access');
+    const UNIT_PREFS=array('swim_course','running','walking','cycling','weight','show_secondary');
     const LOCATION=array('name','pool_length','pool_unit','latitude','longitude','notes');
     public static function error($text,$status=422){return new \WP_Error('standalone_settings',$text,array('status'=>$status));}
     public static function ready($owner){
@@ -16,6 +17,13 @@ final class Settings {
         foreach(array('location','workout','land-activity','garmin-personal-api','garmin-measurement-sync','importer','plugin')as$file){$path=SWIMLOG_EVALUATION_DIR.'includes/class-'.$file.'.php';if(!is_readable($path))return self::error('An installed Swim Log service needed by Settings is unavailable.',503);require_once $path;}
         return true;
     }
+    private static function unitService(){
+        if(!defined('SWIMLOG_EVALUATION_DIR'))return false;
+        $class='SwimLogEvaluation\\Unit_Preferences';
+        if(!class_exists($class,false)){$path=SWIMLOG_EVALUATION_DIR.'includes/class-unit-preferences.php';if(!is_readable($path))return false;require_once $path;}
+        return class_exists($class,false)&&is_callable(array($class,'get'))&&is_callable(array($class,'save'))&&is_callable(array($class,'sanitize'))?$class:false;
+    }
+    public static function unitPreferences($owner){$service=self::unitService();return $service?$service::get($owner):false;}
     private static function credentialMarker($owner,$stored){return hash_hmac('sha256','standalone-garmin-v1:'.$owner.':'.$stored,wp_salt('auth'));}
     public static function verified($owner){
         if(is_wp_error(self::ready($owner)))return false;
@@ -34,7 +42,7 @@ final class Settings {
         if(!is_callable(array(API::class,'connection_ready')))update_user_meta($owner,self::VERIFIED_KEY,self::credentialMarker($owner,$stored));
         return self::verified($owner)?true:self::error('Verification could not be confirmed. Test the connection again.',503);
     }
-    public static function preferences($owner){$v=array();foreach(self::PREFS as$key)$v[$key]=(string)get_user_meta($owner,'swimlog_'.$key,true);if($v['public_results']==='')$v['public_results']=(string)get_option('swimlog_public_results_default','0');if(!in_array($v['calendar_first_day'],array('saturday','sunday','monday'),true))$v['calendar_first_day']='sunday';if((int)$v['training_volume_months']<1||(int)$v['training_volume_months']>24)$v['training_volume_months']='3';return $v;}
+    public static function preferences($owner){$v=array();foreach(self::PREFS as$key)$v[$key]=(string)get_user_meta($owner,'swimlog_'.$key,true);if($v['public_results']==='')$v['public_results']=(string)get_option('swimlog_public_results_default','0');if(!in_array($v['calendar_first_day'],array('saturday','sunday','monday'),true))$v['calendar_first_day']='sunday';if((int)$v['training_volume_months']<1||(int)$v['training_volume_months']>24)$v['training_volume_months']='3';$units=self::unitPreferences($owner);if(is_array($units))$v=array_merge($v,$units);return $v;}
     public static function activities($owner){$choices=array('lap_swimming'=>'Pool swims','open_water_swimming'=>'Open-water swims');if(\SwimLogEvaluation\Land_Activity::authorized($owner)&&\SwimLogEvaluation\Land_Activity::enabled())$choices+=array('running'=>'Running','walking'=>'Walking');return $choices;}
     public static function measurements(){return array('weight'=>'Weight','body_composition'=>'Body composition (BMI only)','spo2'=>'SpO2 provider summaries');}
     public static function location($owner,$id){if($id==='new')return null;if(!is_string($id)||!preg_match('/^[1-9][0-9]{0,17}$/D',$id)||(float)$id>PHP_INT_MAX)return self::error('Choose a valid location.');$row=Location::get_for_user((int)$id,$owner);return $row?:self::error('Location not found.',404);}
@@ -52,7 +60,8 @@ final class Settings {
         if($origin!==$appOrigin||!is_string($input['nonce']??null)||!wp_verify_nonce($input['nonce'],'standalone_settings_'.$op.'_'.$id))return self::error('This settings request expired. Reload the screen.',403);
         if($screen==='locations'&&!current_user_can('swimlog_manage_own_locations'))return self::error('Your account cannot manage locations.',403);
         if(in_array($op,array('activity_sync','measurement_sync'),true)&&(!self::verified($owner)||($op==='measurement_sync'&&!current_user_can('swimlog_manage_own_workouts'))))return self::error('Verify your Garmin connection and workout permissions before configuring synchronization.',403);
-        $extra=array('swimmer_save'=>self::PREFS,'location_save'=>array_merge(self::LOCATION,array('location_id')),'location_delete'=>array('location_id','confirm_delete'),'key_save'=>array('api_key'),'key_remove'=>array('confirm_remove'),'key_test'=>array(),'activity_sync'=>array('enabled','types'),'measurement_sync'=>array('categories'))[$op];
+        $swimmerFields=self::unitService()?array_merge(self::PREFS,self::UNIT_PREFS):self::PREFS;
+        $extra=array('swimmer_save'=>$swimmerFields,'location_save'=>array_merge(self::LOCATION,array('location_id')),'location_delete'=>array('location_id','confirm_delete'),'key_save'=>array('api_key'),'key_remove'=>array('confirm_remove'),'key_test'=>array(),'activity_sync'=>array('enabled','types'),'measurement_sync'=>array('categories'))[$op];
         if(array_diff(array_keys($input),array_merge(array('operation','nonce','revision'),$extra)))return self::error('This form cannot change ownership or unrelated settings.');
         foreach($input as$key=>$value){if(in_array($key,array('types','categories'),true)){if(!is_array($value)||count($value)>4)return self::error('Choose supported synchronization categories.');foreach($value as$v)if(!is_string($v))return self::error('Invalid synchronization selection.');}elseif(!is_string($value)||strlen($value)>12000)return self::error('Invalid settings field.');}
         $lock=Importer::owner_lock($owner);if(is_wp_error($lock))return self::error('Another owner operation is running. Retry shortly.',409);
@@ -63,6 +72,8 @@ final class Settings {
             if($op==='swimmer_save') {
                 foreach(array('birthdate','calendar_first_day','training_volume_months')as$key)if(!isset($input[$key]))return self::error('A swimmer configuration field is missing.');
                 foreach(array('public_results','public_ows_routes','rest_api_access')as$key)if(isset($input[$key])&&$input[$key]!=='1')return self::error('Choose valid privacy settings.');
+                $unitService=self::unitService();$cleanUnits=false;
+                if($unitService){foreach(array_diff(self::UNIT_PREFS,array('show_secondary'))as$key)if(!isset($input[$key]))return self::error('A unit preference is missing.');$unitInput=array_intersect_key($input,array_flip(self::UNIT_PREFS));if(!isset($unitInput['show_secondary']))$unitInput['show_secondary']='0';$cleanUnits=$unitService::sanitize($unitInput);if(is_wp_error($cleanUnits))return self::error('Choose valid unit preferences.');}
                 require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-ui.php';require_once SWIMLOG_EVALUATION_DIR.'admin/class-admin-settings.php';require_once ABSPATH.'wp-admin/includes/template.php';
                 // The plugin owns preference validation and persistence; suppress its admin presentation.
                 $post=$_POST;$request=$_REQUEST;$level=ob_get_level();
@@ -71,7 +82,8 @@ final class Settings {
                 if(strpos($markup,'notice notice-error')!==false)return self::error('Enter a valid birth date that is not in the future. Your settings were not saved.');
                 $expected=array('birthdate'=>$input['birthdate'],'calendar_first_day'=>in_array($input['calendar_first_day'],array('saturday','sunday','monday'),true)?$input['calendar_first_day']:'sunday','training_volume_months'=>(string)max(1,min(24,absint($input['training_volume_months']))));
                 foreach(array('public_results','public_ows_routes','rest_api_access')as$key)$expected[$key]=isset($input[$key])?'1':'0';
-                if(self::preferences($owner)!=$expected)return self::error('The configuration could not be confirmed. Reload and check your settings.',503);
+                if(is_array($cleanUnits)){$savedUnits=$unitService::save($owner,$cleanUnits);if(is_wp_error($savedUnits)||$savedUnits!==$cleanUnits)return self::error('Unit preferences could not be saved. Reload and check your settings.',503);$expected=array_merge($expected,$cleanUnits);}
+                if(self::preferences($owner)!==$expected)return self::error('The configuration could not be confirmed. Reload and check your settings.',503);
             } elseif($op==='location_save') {
                 foreach(self::LOCATION as$key)if(!isset($input[$key]))return self::error('A location field is missing.');
                 foreach(array('pool_length','latitude','longitude')as$key)if($input[$key]!==''&&(!is_numeric($input[$key])||!is_finite((float)$input[$key])))return self::error('Enter valid numeric location measurements.');
