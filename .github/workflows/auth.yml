@@ -147,6 +147,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-integration.php" --path=/tmp/swimlog-wp
           python3 tests/advanced-evaluation-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/balance-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
@@ -228,6 +231,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-integration.php" --path=/tmp/swimlog-wp
           python3 tests/advanced-evaluation-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/balance-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
@@ -280,6 +286,9 @@ jobs:
           wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-integration.php" --path=/tmp/swimlog-wp
           python3 tests/advanced-evaluation-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/balance-web.py
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
           wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
           python3 tests/readiness-web.py
