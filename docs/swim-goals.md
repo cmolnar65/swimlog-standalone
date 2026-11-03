@@ -21,13 +21,15 @@ manual time or distance fields do not become an evaluated performance.
 
 ## Date-range distance goals
 
-The first and last dates are inclusive. Progress sums the recorded native
-distance for pool and open-water workouts whose stored unit exactly matches the
-goal's `m` or `yd` course. All strokes count. Land workouts, missing distances,
-and unknown or different distance units do not count. Meter and yard totals are
-never converted or added together. The plugin stores goal targets in its
-canonical goal field; the standalone displays the selected course value and
-calculates progress from matching native-unit workout fields only.
+The first and last dates are inclusive. Progress sums canonical
+`total_distance_m` values for pool and open-water workouts, across all strokes.
+Yard swims are normalized to meters in this field and count toward the same
+swimming total as meter swims; land workouts and missing distances do not count.
+The plugin stores goal targets canonically in meters as well. The standalone
+compares those meter totals and targets, then displays both in the goal's
+selected course unit (meters or yards). This changes only goal aggregation and
+display; recorded workouts and course-specific performances remain in their
+stored units and are not rewritten or merged.
 
 Progress reflects current recorded history, so correcting, importing, or
 removing a workout can change a goal's progress. It does not alter workout

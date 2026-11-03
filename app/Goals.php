@@ -71,16 +71,18 @@ final class Goals {
         return array('url'=>'/?screen=goals&goal_deleted=1');
     }
 
-    /** Use the plugin's owner-scoped goal list, then replace merged progress with native-course progress. */
+    /** Keep one-time evaluations course-specific; range totals use canonical meter distances. */
     private static function progress($goal) {
         if ($goal['goal_type']===self::PERIOD) {
             global $wpdb;
             $rows=\SwimLogEvaluation\Database::table('workouts');
             $next=(new \DateTimeImmutable($goal['end_date'],wp_timezone()))->modify('+1 day')->format('Y-m-d');
-            $sum=\SwimLogEvaluation\Database::read('get_var',$wpdb->prepare("SELECT COALESCE(SUM(original_distance),0) FROM %i WHERE user_id=%d AND workout_type IN ('pool','open_water') AND original_distance IS NOT NULL AND original_distance_unit=%s AND workout_start >= %s AND workout_start < %s",$rows,(int)$goal['user_id'],$goal['course_unit'],$goal['start_date'].' 00:00:00',$next.' 00:00:00'));
-            $current=max(0.0,(float)$sum); $target=self::periodTarget($goal); $percent=$target>0?round(100*$current/$target,1):0;
-            $goal['progress_native']=$current; $goal['target_native']=$target; $goal['progress_percent']=$percent; $goal['progress_meters']=null;
-            $goal['status']=self::status($goal,$current >= $target);
+            $sum=\SwimLogEvaluation\Database::read('get_var',$wpdb->prepare("SELECT COALESCE(SUM(total_distance_m),0) FROM %i WHERE user_id=%d AND workout_type IN ('pool','open_water') AND total_distance_m IS NOT NULL AND workout_start >= %s AND workout_start < %s",$rows,(int)$goal['user_id'],$goal['start_date'].' 00:00:00',$next.' 00:00:00'));
+            $currentMeters=max(0.0,(float)$sum); $targetMeters=max(0.0,(float)($goal['target_distance_m']??0));
+            $currentNative=$goal['course_unit']==='yd'?$currentMeters/self::YARDS_TO_METERS:$currentMeters; $target=self::periodTarget($goal);
+            $percent=$targetMeters>0?round(100*$currentMeters/$targetMeters,1):0;
+            $goal['progress_native']=$currentNative; $goal['target_native']=$target; $goal['progress_percent']=$percent; $goal['progress_meters']=$currentMeters;
+            $goal['status']=self::status($goal,$currentMeters >= $targetMeters);
             return $goal;
         }
         global $wpdb;

@@ -117,10 +117,12 @@ The standalone Goals screen stores goals in the installed plugin's owner-scoped
 goals table and requires the swimmer's own workout-management capability. A
 one-time goal can target an evaluated distance, a course-specific pace per 100,
 or both, due by an inclusive date. Date-range goals total recorded pool and
-open-water swims from inclusive first and last days. Range progress sums only
-native `original_distance` rows whose unit matches the goal, so meter and yard
-goals stay separate and land or unknown-unit distances are excluded. Calendar
-markers show one-time due dates and range boundaries. See
+open-water swims from inclusive first and last days. Range progress sums
+canonical meter distances, including yard swims normalized to meters. Targets
+and progress are compared in meters and displayed in the goal's selected course
+unit; land and missing distances are excluded. Recorded swim distances and
+performances retain their course-specific units. Calendar markers show
+one-time due dates and range boundaries. See
 [the standalone goals contract](docs/swim-goals.md).
 
 See [branding provenance](docs/BRANDING.md) and [carried-forward requirements](docs/ROADMAP.md).
