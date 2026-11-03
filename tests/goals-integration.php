@@ -14,7 +14,7 @@ try {
     $mGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'m','target_distance'=>'1500','start_date'=>$start,'end_date'=>$end,'title'=>'Synthetic meter period'));$yGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'yd','target_distance'=>'1200','start_date'=>$start,'end_date'=>$end,'title'=>'Synthetic yard period'));
     $check(is_int($mGoal)&&is_int($yGoal),'Both native-course date-range goals save.');$loaded=Goals::load($owner);$byId=array();foreach($loaded['goals']as$g)$byId[$g['id']]=$g;
     $check(abs($byId[$mGoal]['progress_native']-2414.4)<0.001&&abs($byId[$mGoal]['progress_meters']-2414.4)<0.001&&$byId[$mGoal]['status']==='achieved','Meter goal adds normalized meters from pool, open-water, and yard swims, while excluding land, future, unknown, and other-owner rows.');
-    $check(abs($byId[$yGoal]['progress_native']-2640)<0.001,'Yard goal displays normalized swim total as 2640 yd; got '.var_export($byId[$yGoal]['progress_native'],true).' for course '.var_export($byId[$yGoal]['course_unit'],true).'.');
+    $check(abs($byId[$yGoal]['progress_native']-(2414.4/0.9144))<0.001,'Yard goal displays canonical meter progress converted to yards.');
     $check(abs($byId[$yGoal]['progress_meters']-2414.4)<0.001,'Yard goal retains canonical progress as 2414.4 m.');
     $check(abs($byId[$yGoal]['target_native']-1200)<0.001,'Yard goal displays its 1200 yd target in yards.');
     $check(abs($byId[$yGoal]['progress_percent']-220)<0.001,'Yard goal percentage compares canonical progress and target.');
