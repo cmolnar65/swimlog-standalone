@@ -63,7 +63,7 @@ final class CalendarView {
         $target=$period?Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit']:Goals::singleTarget($goal);
         if($period)$progress=Goals::formatNumber((float)($goal['progress_native']??0)).' / '.Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit'];
         else $progress=$goal['best_pace_ms']!==null?'Best pace '.Goals::formatPace($goal['best_pace_ms']).' / 100 '.$goal['course_unit']:'No qualifying performance yet';
-        return array('type'=>'goal','id'=>(int)$goal['id'],'label'=>$goal['title'],'marker'=>$markers[$goal['marker']]??'Goal','target'=>$target,'progress'=>$progress,'status'=>Goals::statusLabel($goal['status']));
+        return array('type'=>'goal','id'=>(int)$goal['id'],'label'=>$goal['title'],'marker'=>$markers[$goal['marker']]??'Goal','target'=>$target,'progress'=>$progress,'status'=>Goals::statusLabel($goal['status']),'completion_date'=>$goal['completion_date']??null);
     }
     private static function item($row, $kind, $owner) {
         $labels = array('pool'=>'Pool swim','open_water'=>'Open-water swim','running'=>'Run','walking'=>'Walk');

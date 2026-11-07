@@ -11,21 +11,25 @@ $insertWorkout=static function($user,$type,$date,$distance,$unit)use($now,&$work
 $create=static function($input)use($owner,$due,$today,&$goalIds){$input+=array('goal_type'=>Swim_Goals::SINGLE,'course_unit'=>'m','start_date'=>$today,'end_date'=>$due);$r=Goals::submit($owner,array_merge($input,array('nonce'=>wp_create_nonce('standalone_goal_save'))),'https://swimlog.example.test','https://swimlog.example.test');if(is_wp_error($r))return$r;global $wpdb;$goalIds[]=(int)$wpdb->insert_id;return (int)$wpdb->insert_id;};
 try {
     $insertWorkout($owner,'pool',$start,1000,'m');$insertWorkout($owner,'open_water',$end,500,'m');$insertWorkout($owner,'pool',$end,1000,'yd');$insertWorkout($owner,'running',$end,5000,'m');$insertWorkout($owner,'pool',$after,700,'yd');$insertWorkout($owner,'pool',$end,null,null);$insertWorkout($other,'pool',$end,4000,'m');
-    $mGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'m','target_distance'=>'1500','start_date'=>$start,'end_date'=>$end,'title'=>'Synthetic meter period'));$yGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'yd','target_distance'=>'1200','start_date'=>$start,'end_date'=>$end,'title'=>'Synthetic yard period'));
+    $mGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'m','target_distance'=>'1500','start_date'=>$start,'end_date'=>$after,'title'=>'Synthetic meter period'));$yGoal=$create(array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'yd','target_distance'=>'1200','start_date'=>$start,'end_date'=>$after,'title'=>'Synthetic yard period'));
     $check(is_int($mGoal)&&is_int($yGoal),'Both native-course date-range goals save.');$loaded=Goals::load($owner);$byId=array();foreach($loaded['goals']as$g)$byId[$g['id']]=$g;
-    $check(abs($byId[$mGoal]['progress_native']-2414.4)<0.001&&abs($byId[$mGoal]['progress_meters']-2414.4)<0.001&&$byId[$mGoal]['status']==='achieved','Meter goal adds normalized meters from pool, open-water, and yard swims, while excluding land, future, unknown, and other-owner rows.');
-    $check(abs($byId[$yGoal]['progress_native']-(2414.4/0.9144))<0.001,'Yard goal displays canonical meter progress converted to yards.');
-    $check(abs($byId[$yGoal]['progress_meters']-2414.4)<0.001,'Yard goal retains canonical progress as 2414.4 m.');
+    $check(abs($byId[$mGoal]['progress_native']-1500)<0.001&&abs($byId[$mGoal]['progress_meters']-1500)<0.001&&$byId[$mGoal]['status']==='achieved','Meter goal stops at its first qualifying pool/open-water swim and excludes later yard and next-day swims.');
+    $check($byId[$mGoal]['completion_date']===$end,'Meter goal records the first swim date that completes the goal.');
+    $check(abs($byId[$yGoal]['progress_native']-1200)<0.001,'Yard goal displays its capped canonical meter progress in yards.');
+    $check(abs($byId[$yGoal]['progress_meters']-(1200*0.9144))<0.001,'Yard goal caps canonical progress at its 1200 yd target.');
     $check(abs($byId[$yGoal]['target_native']-1200)<0.001,'Yard goal displays its 1200 yd target in yards.');
-    $check(abs($byId[$yGoal]['progress_percent']-220)<0.001,'Yard goal percentage compares canonical progress and target.');
+    $check(abs($byId[$yGoal]['progress_percent']-100)<0.001,'Yard goal percentage stops at completion.');
     $check($byId[$yGoal]['status']==='achieved','Yard goal status compares canonical progress and target.');
+    $check($byId[$yGoal]['completion_date']===$end,'Yard goal records the date of the swim that crosses its target.');
     $swim=$insertWorkout($owner,'pool',$today,1500,'m');Database::write('insert',Database::table('performances'),array('user_id'=>$owner,'workout_id'=>$swim,'distance_value'=>1500,'course_unit'=>'m','stroke'=>'BR','duration_ms'=>1700000,'evaluation_version'=>'synthetic','achieved_at'=>$now,'created_at'=>$now));
-    $distanceOnly=$create(array('course_unit'=>'m','target_distance_value'=>'1500','target_pace'=>''));$paceOnly=$create(array('course_unit'=>'yd','target_distance_value'=>'','target_pace'=>'1:00.00'));
+    $distanceOnly=$create(array('course_unit'=>'m','target_distance_value'=>'1500','target_pace'=>'','start_date'=>$start));$paceOnly=$create(array('course_unit'=>'yd','target_distance_value'=>'','target_pace'=>'1:00.00'));
     $ydSwim=$insertWorkout($owner,'pool',$today,400,'yd');Database::write('insert',Database::table('performances'),array('user_id'=>$owner,'workout_id'=>$ydSwim,'distance_value'=>400,'course_unit'=>'yd','stroke'=>'FR','duration_ms'=>240000,'evaluation_version'=>'synthetic','achieved_at'=>$now,'created_at'=>$now));
-    $both=$create(array('course_unit'=>'m','target_distance_value'=>'1500','target_pace'=>'2:00.00'));
+    $both=$create(array('course_unit'=>'m','target_distance_value'=>'1500','target_pace'=>'2:00.00','start_date'=>$start));
+    $laterPerformance=$insertWorkout($owner,'pool',$after,null,null);Database::write('insert',Database::table('performances'),array('user_id'=>$owner,'workout_id'=>$laterPerformance,'distance_value'=>1500,'course_unit'=>'m','stroke'=>'BR','duration_ms'=>1600000,'evaluation_version'=>'synthetic','achieved_at'=>$after.' 08:00:00','created_at'=>$now));
     $check(is_int($distanceOnly)&&is_int($paceOnly)&&is_int($both),'Distance-only, pace-only, and combined one-time goals save.');$loaded=Goals::load($owner);$byId=array();foreach($loaded['goals']as$g)$byId[$g['id']]=$g;
     $check($byId[$distanceOnly]['status']==='achieved'&&$byId[$both]['status']==='achieved','Exact meter distance performance qualifies at any pace and stroke.');
-    $check($byId[$paceOnly]['status']==='achieved'&&$byId[$paceOnly]['progress_distance_value']===400,'Pace-only goal checks evaluated yard pace in the selected course.');
+    $check($byId[$distanceOnly]['completion_date']===$today&&$byId[$both]['completion_date']===$today,'One-time goals retain the first qualifying date when a later performance is faster.');
+    $check($byId[$paceOnly]['status']==='achieved'&&$byId[$paceOnly]['progress_distance_value']===400&&$byId[$paceOnly]['completion_date']===$today,'Pace-only goal checks evaluated yard pace and records its qualifying swim date.');
     $check(is_wp_error(Goals::submit($owner,array('nonce'=>wp_create_nonce('standalone_goal_save'),'goal_type'=>Swim_Goals::SINGLE,'course_unit'=>'m','target_distance_value'=>'','target_pace'=>'','end_date'=>$due),'https://swimlog.example.test','https://swimlog.example.test')),'Empty one-time targets are rejected.');
     $foreign=Swim_Goals::create($other,array('goal_type'=>Swim_Goals::PERIOD,'course_unit'=>'m','target_distance'=>'10','start_date'=>$start,'end_date'=>$end));$check(!is_wp_error($foreign),'Foreign synthetic goal created for isolation check.');
     $check(is_wp_error(Goals::load($other)),'Manage-all capability cannot load another owner goals in standalone.');
@@ -33,6 +37,7 @@ try {
     $markers=Goals::calendarMarkers($owner,$start,$due);$pairs=array_map(static function($m){return$m['id'].':'.$m['marker'];},$markers);
     $check(in_array($mGoal.':goal_start',$pairs,true)&&in_array($mGoal.':goal_end',$pairs,true)&&in_array($both.':goal_due',$pairs,true),'Calendar marks date-range boundaries and one-time due dates.');
     $goals=$loaded;ob_start();require dirname(__DIR__).'/app/goals.php';$html=ob_get_clean();$check(strpos($html,'Set Goal')!==false&&strpos($html,'List Goals')!==false&&strpos($html,'Synthetic meter period')!==false&&strpos($html,'goal_delete')!==false,'Standalone Goals screen renders set/list controls, live progress and per-goal deletion.');
+    $check(strpos($html,'goal-achieved-date')!==false&&strpos($html,Goals::formatCompletionDate($end))!==false,'Goals list shows the completion date beneath each achieved status.');
     WP_CLI::success('Standalone synthetic goals storage, native-course progress, one-time targets, ownership and calendar checks passed '.$checks.' assertions.');
 } finally {
     global $wpdb;

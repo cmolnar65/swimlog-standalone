@@ -71,18 +71,29 @@ final class Goals {
         return array('url'=>'/?screen=goals&goal_deleted=1');
     }
 
-    /** Keep one-time evaluations course-specific; range totals use canonical meter distances. */
+    /** Keep one-time evaluations course-specific and stop range totals at completion. */
     private static function progress($goal) {
         if ($goal['goal_type']===self::PERIOD) {
             global $wpdb;
             $rows=\SwimLogEvaluation\Database::table('workouts');
             $next=(new \DateTimeImmutable($goal['end_date'],wp_timezone()))->modify('+1 day')->format('Y-m-d');
-            $sum=\SwimLogEvaluation\Database::read('get_var',$wpdb->prepare("SELECT COALESCE(SUM(total_distance_m),0) FROM %i WHERE user_id=%d AND workout_type IN ('pool','open_water') AND total_distance_m IS NOT NULL AND workout_start >= %s AND workout_start < %s",$rows,(int)$goal['user_id'],$goal['start_date'].' 00:00:00',$next.' 00:00:00'));
-            $currentMeters=max(0.0,(float)$sum); $targetMeters=max(0.0,(float)($goal['target_distance_m']??0));
+            $workouts=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare("SELECT id,workout_start,total_distance_m FROM %i WHERE user_id=%d AND workout_type IN ('pool','open_water') AND total_distance_m IS NOT NULL AND workout_start >= %s AND workout_start < %s ORDER BY workout_start ASC,id ASC",$rows,(int)$goal['user_id'],$goal['start_date'].' 00:00:00',$next.' 00:00:00'));
+            $targetMeters=max(0.001,(float)($goal['target_distance_m']??0)); $currentMeters=0.0; $completionDate=null;
+            foreach((array)$workouts as $workout) {
+                $distance=(float)$workout->total_distance_m;
+                if(!is_finite($distance)||$distance<=0)continue;
+                $currentMeters+=$distance;
+                if($currentMeters >= $targetMeters) {
+                    $currentMeters=$targetMeters;
+                    $completionDate=substr((string)$workout->workout_start,0,10);
+                    break;
+                }
+            }
             $currentNative=$goal['course_unit']==='yd'?$currentMeters/self::YARDS_TO_METERS:$currentMeters; $target=self::periodTarget($goal);
             $percent=$targetMeters>0?round(100*$currentMeters/$targetMeters,1):0;
             $goal['progress_native']=$currentNative; $goal['target_native']=$target; $goal['progress_percent']=$percent; $goal['progress_meters']=$currentMeters;
-            $goal['status']=self::status($goal,$currentMeters >= $targetMeters);
+            $goal['completion_date']=$completionDate;
+            $goal['status']=self::status($goal,$completionDate!==null);
             return $goal;
         }
         global $wpdb;
@@ -90,16 +101,17 @@ final class Goals {
         $where=array('p.user_id=%d','p.course_unit=%s','p.achieved_at >= %s','p.achieved_at < %s',"w.workout_type='pool'"); $args=array((int)$goal['user_id'],$goal['course_unit'],$goal['start_date'].' 00:00:00',(new \DateTimeImmutable($goal['end_date'],wp_timezone()))->modify('+1 day')->format('Y-m-d').' 00:00:00');
         if ($goal['target_distance_value']!==null) {$where[]='p.distance_value=%d';$args[]=(int)$goal['target_distance_value'];}
         $sql=$wpdb->prepare('SELECT p.distance_value,p.duration_ms,p.achieved_at FROM %i p INNER JOIN %i w ON w.id=p.workout_id AND w.user_id=p.user_id WHERE '.implode(' AND ',$where).' ORDER BY p.achieved_at ASC,p.id ASC',$performances,$workouts,...$args);
-        $results=\SwimLogEvaluation\Database::read('get_results',$sql); $best=null; $achieved=false;
+        $results=\SwimLogEvaluation\Database::read('get_results',$sql); $best=null; $completionDate=null;
         foreach((array)$results as $row) {
             $distance=(int)$row->distance_value; if($distance<=0)continue;
             $pace=(int)round((int)$row->duration_ms*100/$distance);
             if($best===null||$pace<$best['pace_ms'])$best=array('pace_ms'=>$pace,'achieved_at'=>(string)$row->achieved_at,'distance_value'=>$distance);
-            if($goal['target_pace_ms']===null||$pace<=(int)$goal['target_pace_ms'])$achieved=true;
+            if($completionDate===null&&($goal['target_pace_ms']===null||$pace<=(int)$goal['target_pace_ms']))$completionDate=substr((string)$row->achieved_at,0,10);
         }
         $goal['best_pace_ms']=$best['pace_ms']??null; $goal['achieved_at']=$best['achieved_at']??null; $goal['progress_distance_value']=$best['distance_value']??null;
-        $goal['progress_percent']=$goal['target_pace_ms']&&$best?round(min(100,100*(int)$goal['target_pace_ms']/max(1,$best['pace_ms'])),1):($achieved?100:0);
-        $goal['status']=self::status($goal,$achieved);
+        $goal['completion_date']=$completionDate;
+        $goal['progress_percent']=$goal['target_pace_ms']&&$best?round(min(100,100*(int)$goal['target_pace_ms']/max(1,$best['pace_ms'])),1):($completionDate!==null?100:0);
+        $goal['status']=self::status($goal,$completionDate!==null);
         return $goal;
     }
 
@@ -127,6 +139,11 @@ final class Goals {
         return sprintf('%d:%02d.%02d',(int)floor($seconds/60),$seconds%60,$hundredths);
     }
     public static function statusLabel($status) { return array('upcoming'=>'Upcoming','in_progress'=>'In progress','achieved'=>'Achieved','missed'=>'Not achieved by date')[$status]??'Unknown'; }
+    public static function formatCompletionDate($date) {
+        if(!is_string($date)||!preg_match('/^\\d{4}-\\d{2}-\\d{2}$/D',$date))return '';
+        $local=\DateTimeImmutable::createFromFormat('!Y-m-d',$date,wp_timezone());
+        return $local?wp_date('M j, Y',$local->setTime(12,0)->getTimestamp(),wp_timezone()):'';
+    }
     public static function singleTarget($goal) {
         $parts=array();
         if($goal['target_distance_value']!==null)$parts[]=(int)$goal['target_distance_value'].' '.$goal['course_unit'].' performance';
