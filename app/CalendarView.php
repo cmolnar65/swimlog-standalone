@@ -59,11 +59,12 @@ final class CalendarView {
     public static function distance($value, $unit='m') { return $value === null ? 'Distance unavailable' : number_format_i18n((float)$value, (float)$value == floor((float)$value) ? 0 : 1) . ' ' . $unit; }
     private static function goalItem($goal) {
         $markers=array('goal_due'=>'Due','goal_start'=>'Starts','goal_end'=>'Ends','goal_start_end'=>'Starts and ends');
-        $period=$goal['goal_type']==='period_distance';
+        $singleWorkout=$goal['goal_type']==='single_workout_distance';
+        $period=in_array($goal['goal_type'],array('period_distance','single_workout_distance'),true);
         $target=$period?Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit']:Goals::singleTarget($goal);
-        if($period)$progress=Goals::formatNumber((float)($goal['progress_native']??0)).' / '.Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit'];
+        if($period)$progress=($singleWorkout?'Longest workout: ':'').Goals::formatNumber((float)($goal['progress_native']??0)).' / '.Goals::formatNumber(Goals::periodTarget($goal)).' '.$goal['course_unit'];
         else $progress=$goal['best_pace_ms']!==null?'Best pace '.Goals::formatPace($goal['best_pace_ms']).' / 100 '.$goal['course_unit']:'No qualifying performance yet';
-        return array('type'=>'goal','id'=>(int)$goal['id'],'label'=>$goal['title'],'marker'=>$markers[$goal['marker']]??'Goal','target'=>$target,'progress'=>$progress,'status'=>Goals::statusLabel($goal['status']),'completion_date'=>$goal['completion_date']??null);
+        return array('type'=>'goal','id'=>(int)$goal['id'],'label'=>$goal['title'],'mode'=>$singleWorkout?'Single Workout':null,'marker'=>$markers[$goal['marker']]??'Goal','target'=>$target,'progress'=>$progress,'status'=>Goals::statusLabel($goal['status']),'completion_date'=>$goal['completion_date']??null);
     }
     private static function item($row, $kind, $owner) {
         $labels = array('pool'=>'Pool swim','open_water'=>'Open-water swim','running'=>'Run','walking'=>'Walk');

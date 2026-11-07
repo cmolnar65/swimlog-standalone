@@ -5,6 +5,7 @@ namespace SwimlogStandalone;
 final class Goals {
     private const SINGLE = 'single_performance';
     private const PERIOD = 'period_distance';
+    private const SINGLE_WORKOUT = 'single_workout_distance';
     private const YARDS_TO_METERS = 0.9144;
 
     private static function ready($owner) {
@@ -24,13 +25,13 @@ final class Goals {
         $table=\SwimLogEvaluation\Database::table('goals');
         $rows=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare('SELECT * FROM %i WHERE user_id=%d ORDER BY start_date DESC,id DESC LIMIT 200',$table,(int)$owner));
         $rows=array_map(static function($row){return self::progress(self::normalizeRow($row));},(array)$rows);
-        return array('goals'=>$rows,'default_unit'=>self::defaultUnit($owner));
+        return array('goals'=>$rows,'default_unit'=>self::defaultUnit($owner),'single_workout_supported'=>self::singleWorkoutSupported());
     }
 
     public static function submit($owner,$input,$origin,$appOrigin) {
         $ready=self::ready($owner); if (is_wp_error($ready)) return $ready;
         if ($origin!==$appOrigin || !is_string($input['nonce']??null) || !wp_verify_nonce($input['nonce'],'standalone_goal_save')) return self::error('This goal request expired. Reload the page and try again.',403);
-        $allowed=array('nonce','goal_type','title','course_unit','target_distance_value','target_pace','target_distance','start_date','end_date');
+        $allowed=array('nonce','goal_type','title','course_unit','target_distance_value','target_pace','target_distance','single_workout','start_date','end_date');
         if (array_diff(array_keys($input),$allowed)) return self::error('This form cannot change goal ownership or unrelated data.');
         foreach($input as $key=>$value) if (!is_string($value) || strlen($value)>191) return self::error('Invalid goal field.');
         $type=$input['goal_type']??''; $unit=$input['course_unit']??'';
@@ -49,11 +50,14 @@ final class Goals {
             $goal=$normalized;$goal['target_distance_value']=$distance===''?null:(int)$distance;$goal['target_pace_ms']=$pace;
             if($title==='')$goal['title']=$distance!==''?(int)$distance.' '.$unit.' swim goal':$unit.' pace goal';
         } elseif ($type===self::PERIOD) {
+            if(isset($input['single_workout'])&&$input['single_workout']!=='1')return self::error('Invalid Single Workout selection.');
+            $singleWorkout=($input['single_workout']??'')==='1';
+            if($singleWorkout&&!self::singleWorkoutSupported())return self::error('Update the WordPress Swim Log plugin before creating Single Workout goals.',503);
             $amount=trim($input['target_distance']??''); $start=self::validDate($input['start_date']??''); $end=self::validDate($input['end_date']??'');
             if ($amount==='' || !is_numeric($amount) || !is_finite((float)$amount) || (float)$amount<=0 || (float)$amount>100000000 || !$start || !$end || $end<$start) return self::error('Enter a positive distance and a valid inclusive date range.');
-            $native=(float)$amount;$normalized=\SwimLogEvaluation\Swim_Goals::normalize_input(array('goal_type'=>self::PERIOD,'title'=>$title,'course_unit'=>$unit,'target_distance'=>$amount,'start_date'=>$start,'end_date'=>$end));
+            $native=(float)$amount;$normalized=\SwimLogEvaluation\Swim_Goals::normalize_input(array('goal_type'=>self::PERIOD,'single_workout'=>$singleWorkout?'1':'','title'=>$title,'course_unit'=>$unit,'target_distance'=>$amount,'start_date'=>$start,'end_date'=>$end));
             if(is_wp_error($normalized))return self::error($normalized->get_error_message());
-            $goal=$normalized;if($title==='')$goal['title']=self::formatNumber($native).' '.$unit.' swimming goal';
+            $goal=$normalized;if($title==='')$goal['title']=self::formatNumber($native).' '.$unit.($singleWorkout?' single-workout goal':' swimming goal');
         } else return self::error('Choose a supported goal type.');
         global $wpdb;
         $now=current_time('mysql'); $goal['user_id']=(int)$owner; $goal['created_at']=$now; $goal['updated_at']=$now;
@@ -73,15 +77,25 @@ final class Goals {
 
     /** Keep one-time evaluations course-specific and stop range totals at completion. */
     private static function progress($goal) {
-        if ($goal['goal_type']===self::PERIOD) {
+        if (in_array($goal['goal_type'],array(self::PERIOD,self::SINGLE_WORKOUT),true)) {
             global $wpdb;
             $rows=\SwimLogEvaluation\Database::table('workouts');
             $next=(new \DateTimeImmutable($goal['end_date'],wp_timezone()))->modify('+1 day')->format('Y-m-d');
             $workouts=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare("SELECT id,workout_start,total_distance_m FROM %i WHERE user_id=%d AND workout_type IN ('pool','open_water') AND total_distance_m IS NOT NULL AND workout_start >= %s AND workout_start < %s ORDER BY workout_start ASC,id ASC",$rows,(int)$goal['user_id'],$goal['start_date'].' 00:00:00',$next.' 00:00:00'));
-            $targetMeters=max(0.001,(float)($goal['target_distance_m']??0)); $currentMeters=0.0; $completionDate=null;
+            $singleWorkout=$goal['goal_type']===self::SINGLE_WORKOUT;
+            $targetMeters=max(0.001,(float)($goal['target_distance_m']??0)); $currentMeters=0.0; $bestSingleWorkout=0.0; $completionDate=null;
             foreach((array)$workouts as $workout) {
                 $distance=(float)$workout->total_distance_m;
                 if(!is_finite($distance)||$distance<=0)continue;
+                if($singleWorkout) {
+                    $bestSingleWorkout=max($bestSingleWorkout,$distance);
+                    if($distance >= $targetMeters) {
+                        $currentMeters=$targetMeters;
+                        $completionDate=substr((string)$workout->workout_start,0,10);
+                        break;
+                    }
+                    continue;
+                }
                 $currentMeters+=$distance;
                 if($currentMeters >= $targetMeters) {
                     $currentMeters=$targetMeters;
@@ -89,6 +103,7 @@ final class Goals {
                     break;
                 }
             }
+            if($singleWorkout&&$completionDate===null)$currentMeters=$bestSingleWorkout;
             $currentNative=$goal['course_unit']==='yd'?$currentMeters/self::YARDS_TO_METERS:$currentMeters; $target=self::periodTarget($goal);
             $percent=$targetMeters>0?round(100*$currentMeters/$targetMeters,1):0;
             $goal['progress_native']=$currentNative; $goal['target_native']=$target; $goal['progress_percent']=$percent; $goal['progress_meters']=$currentMeters;
@@ -119,7 +134,7 @@ final class Goals {
         $ready=self::ready($owner); if(is_wp_error($ready))return $ready;
         global $wpdb;
         $table=\SwimLogEvaluation\Database::table('goals');
-        $rows=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare("SELECT * FROM %i WHERE user_id=%d AND ((goal_type=%s AND end_date BETWEEN %s AND %s) OR (goal_type=%s AND (start_date BETWEEN %s AND %s OR end_date BETWEEN %s AND %s))) ORDER BY start_date ASC,id ASC",$table,(int)$owner,self::SINGLE,$start,$end,self::PERIOD,$start,$end,$start,$end));
+        $rows=\SwimLogEvaluation\Database::read('get_results',$wpdb->prepare("SELECT * FROM %i WHERE user_id=%d AND ((goal_type=%s AND end_date BETWEEN %s AND %s) OR (goal_type IN (%s,%s) AND (start_date BETWEEN %s AND %s OR end_date BETWEEN %s AND %s))) ORDER BY start_date ASC,id ASC",$table,(int)$owner,self::SINGLE,$start,$end,self::PERIOD,self::SINGLE_WORKOUT,$start,$end,$start,$end));
         $markers=array();
         foreach((array)$rows as$row) {
             $goal=self::progress(self::normalizeRow($row));
@@ -138,6 +153,7 @@ final class Goals {
         if($hundredths===100){$seconds++;$hundredths=0;}
         return sprintf('%d:%02d.%02d',(int)floor($seconds/60),$seconds%60,$hundredths);
     }
+    public static function singleWorkoutSupported() { return defined('SwimLogEvaluation\\Swim_Goals::SINGLE_WORKOUT'); }
     public static function statusLabel($status) { return array('upcoming'=>'Upcoming','in_progress'=>'In progress','achieved'=>'Achieved','missed'=>'Not achieved by date')[$status]??'Unknown'; }
     public static function formatCompletionDate($date) {
         if(!is_string($date)||!preg_match('/^\\d{4}-\\d{2}-\\d{2}$/D',$date))return '';
