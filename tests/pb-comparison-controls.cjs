@@ -1,0 +1,4 @@
+// Period controls without a browser engine.
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const fields=['year','month','dates','age'].map(mode=>({dataset:{periodFields:mode},inputs:[{}],querySelectorAll(){return this.inputs;}})),mode={value:'year',addEventListener(t,f){this.change=f;}},group={querySelector(){return mode;},querySelectorAll(){return fields;}};
+vm.runInNewContext(fs.readFileSync('public/assets/pb-comparison.js','utf8'),{document:{querySelectorAll(){return [group];}}});assert(!fields[0].hidden);assert(fields[0].inputs[0].required);assert(fields[3].inputs[0].disabled);mode.value='age';mode.change();assert(fields[0].hidden);assert(fields[0].inputs[0].disabled);assert(!fields[3].hidden);assert(fields[3].inputs[0].required);assert(!fields[3].inputs[0].disabled);console.log('PB period controls: 8 assertions passed (DOM stub, no browser).');

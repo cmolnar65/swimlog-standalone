@@ -1,0 +1,318 @@
+name: Standalone checks
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      run_browser:
+        description: 'Run browser checks only when explicitly requested'
+        type: boolean
+        required: false
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: standalone-checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SWIMLOG_RUN_BROWSER: ${{ github.event_name == 'workflow_dispatch' && inputs.run_browser }}
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: synthetic-only
+          MYSQL_DATABASE: swimlog_test
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -psynthetic-only" --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
+        with:
+          repository: cmolnar65/swim-log-evaluation
+          ref: cc795ebcac6d638ad772257bc3e735f608f46245
+          path: plugin-reference
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; Node.js 24
+        with:
+          repository: cmolnar65/swim-log-evaluation
+          ref: 01aa3162f1ca283142f1e6192b116110f0ab31bb
+          path: plugin-legacy-helpers
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '${{ matrix.php }}'
+          extensions: mysqli, openssl, dom, simplexml, zip
+          tools: wp-cli, composer
+          coverage: none
+      - name: Lint
+        run: |
+          set -e
+          while IFS= read -r -d '' file; do php -l "$file"; done < <(find app public companion config tests -name '*.php' -print0)
+          for script in scripts/*.sh; do bash -n "$script"; done
+          node tests/comparison-selection.cjs
+          node tests/pb-comparison-controls.cjs
+          node tests/chart-tooltips.cjs
+          node tests/calendar-day-measurements.cjs
+          php tests/release-loader.php
+          SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php
+          SWIMLOG_SYNTHETIC_TEST=1 php tests/sharing-missing-service.php partial
+      - name: Fresh synthetic WordPress integration
+        env:
+          SWIMLOG_SYNTHETIC_TEST: '1'
+        run: |
+          composer install --working-dir=plugin-reference --no-dev --prefer-dist --no-interaction --no-progress
+          mkdir /tmp/swimlog-wp
+          wp core download --path=/tmp/swimlog-wp --version=latest
+          wp config create --path=/tmp/swimlog-wp --dbname=swimlog_test --dbuser=root --dbpass=synthetic-only --dbhost=127.0.0.1
+          wp core install --path=/tmp/swimlog-wp --url=https://wordpress.example.test --title=Synthetic --admin_user=synthetic_admin --admin_password=synthetic-only --admin_email=admin@example.test --skip-email
+          wp eval-file "$GITHUB_WORKSPACE/tests/integration.php" --path=/tmp/swimlog-wp
+      - name: HTTP login, callback, home and logout boundaries
+        env:
+          SWIMLOG_SYNTHETIC_TEST: '1'
+          SWIMLOG_TEST_WP: /tmp/swimlog-wp
+          SWIMLOG_CONFIG: /tmp/swimlog-config.php
+          SWIMLOG_WEB_FIXTURE: /tmp/swimlog-web.json
+        run: |
+          if [ ! -d /tmp/swimlog-wp/wp-content/plugins/swimlog-core ]; then
+            cp -a plugin-reference /tmp/swimlog-wp/wp-content/plugins/swimlog-core
+            wp plugin activate swimlog-core --path=/tmp/swimlog-wp
+            wp eval-file "$GITHUB_WORKSPACE/plugin-reference/tests/workout-visibility-integration.php" --path=/tmp/swimlog-wp
+            wp eval-file "$GITHUB_WORKSPACE/tests/calendar-fixture.php" --path=/tmp/swimlog-wp
+          fi
+          wp eval-file "$GITHUB_WORKSPACE/tests/log-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/planned-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/event-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/settings-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-cache.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/workout-editor-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/settings-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/sharing-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/workout-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/log-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/planned-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-editor-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-actions-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-match-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/event-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/structured-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/goals-integration.php" --path=/tmp/swimlog-wp
+          printf '%s\n' "<?php return ['wordpress_load'=>'/tmp/swimlog-wp/wp-load.php','wordpress_origin'=>'https://wordpress.example.test','app_origin'=>'https://swimlog.example.test'];" > /tmp/swimlog-config.php
+          mkdir -p /tmp/swimlog-wp/wp-content/mu-plugins
+          python3 -c 'import os,pathlib; source=pathlib.Path("companion/loader.php").read_text(); pathlib.Path("/tmp/swimlog-wp/wp-content/mu-plugins/standalone.php").write_text(source.replace("/var/www/swimlog.cmolnar.com/current", os.environ["GITHUB_WORKSPACE"]))'
+          printf '%s\n' "<?php require '$GITHUB_WORKSPACE/tests/settings-http-mock.php';" > /tmp/swimlog-wp/wp-content/mu-plugins/settings-test.php
+          php -S 127.0.0.1:8099 tests/router.php > /tmp/swimlog-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server"; rm -f /tmp/swimlog-web.json' EXIT
+          for attempt in {1..20}; do
+            if curl -s -H 'Host: swimlog.example.test' http://127.0.0.1:8099/ > /dev/null; then break; fi
+            sleep 1
+          done
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
+          python3 tests/web.py
+          python3 tests/entry-web.py
+          python3 tests/settings-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/sharing-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/pb-comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/progression-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/progression-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/association-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/volume-delete-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/volume-delete-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/session-analysis-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/advanced-evaluation-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/balance-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-measurements-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-measurements-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/calendar-measurements-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/readiness-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/manual-pdf-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/manual-pdf-web.py
+          if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
+            timeout --signal=TERM --kill-after=15s 240s npm install --no-save --no-package-lock playwright@1.62.1
+            timeout --signal=TERM --kill-after=15s 300s npx playwright install --with-deps chromium firefox webkit
+            openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=example.test' -addext 'subjectAltName=DNS:wordpress.example.test,DNS:swimlog.example.test' -keyout /tmp/swimlog-key.pem -out /tmp/swimlog-cert.pem > /dev/null 2>&1
+            env SWIMLOG_SYNTHETIC_TEST=1 python3 "$GITHUB_WORKSPACE/tests/tls-proxy.py" > /tmp/swimlog-tls.log 2>&1 &
+            tls=$!
+            trap 'kill "$server"; kill "$tls" || true; rm -f /tmp/swimlog-web.json /tmp/swimlog-key.pem /tmp/swimlog-cert.pem' EXIT
+            for attempt in {1..20}; do
+              if curl --noproxy '' -x http://127.0.0.1:8088 -ks https://swimlog.example.test/ > /dev/null; then break; fi
+              sleep 1
+            done
+            if ! curl --noproxy '' -x http://127.0.0.1:8088 -ks https://swimlog.example.test/ > /dev/null; then
+              cat /tmp/swimlog-tls.log
+              exit 1
+            fi
+            for browser in chromium firefox webkit; do
+              wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
+              wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/analytics-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/volume-delete-browser.cjs
+              wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/association-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/bests-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/sharing-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/entry-browser.cjs
+              SWIMLOG_BROWSER="$browser" timeout --signal=TERM --kill-after=15s 180s node tests/browser.cjs
+            done
+          fi
+          # Older installed builds have no native_distance/duration/normalize_form helpers.
+          # Replace only the admin helper layer in this disposable WordPress installation.
+          cp plugin-legacy-helpers/admin/class-admin-ui.php /tmp/swimlog-wp/wp-content/plugins/swimlog-core/admin/
+          cp plugin-legacy-helpers/admin/class-admin-planned-workouts.php /tmp/swimlog-wp/wp-content/plugins/swimlog-core/admin/
+          wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/form-helper-compatibility.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-editor-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-actions-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/plan-match-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/event-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/structured-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
+          python3 tests/web.py
+          python3 tests/entry-web.py
+          python3 tests/settings-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/sharing-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/pb-comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/progression-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/progression-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/association-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/volume-delete-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/volume-delete-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/session-analysis-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/advanced-evaluation-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/balance-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-measurements-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-measurements-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/calendar-measurements-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/readiness-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/manual-pdf-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/manual-pdf-web.py
+          if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
+            wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/browser.cjs
+            wp eval-file "$GITHUB_WORKSPACE/tests/entry-reset.php" --path=/tmp/swimlog-wp
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/entry-browser.cjs
+          fi
+          # Simulate an installed Garmin API without the newer verification helper/constant.
+          python3 -c 'import pathlib; p=pathlib.Path("/tmp/swimlog-wp/wp-content/plugins/swimlog-core/includes/class-garmin-personal-api.php"); p.write_text(p.read_text().replace("connection_ready", "legacy_connection_ready").replace("TESTED_KEY", "LEGACY_TESTED_KEY"))'
+          # Discard the HTTP process's cached class after replacing the installed API.
+          kill "$server"
+          wait "$server" || true
+          php -S 127.0.0.1:8099 tests/router.php > /tmp/swimlog-http.log 2>&1 &
+          server=$!
+          for attempt in {1..20}; do
+            if curl -s -H 'Host: swimlog.example.test' http://127.0.0.1:8099/ > /dev/null; then break; fi
+            sleep 1
+          done
+          wp eval-file "$GITHUB_WORKSPACE/tests/settings-legacy.php" --path=/tmp/swimlog-wp
+          python3 tests/settings-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/sharing-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/sharing-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/bests-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/bests-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/pb-comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/pb-comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/progression-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/progression-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/association-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/volume-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/volume-delete-integration.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/association-fixture.php" --path=/tmp/swimlog-wp
+          python3 tests/volume-delete-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/analytics-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/analytics-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/comparison-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/comparison-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/session-analysis-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/session-analysis-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/advanced-evaluation-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/advanced-evaluation-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/balance-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/balance-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-measurements-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/calendar-measurements-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/calendar-measurements-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-fixture.php" --path=/tmp/swimlog-wp
+          wp eval-file "$GITHUB_WORKSPACE/tests/readiness-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/readiness-web.py
+          wp eval-file "$GITHUB_WORKSPACE/tests/manual-pdf-integration.php" --path=/tmp/swimlog-wp
+          python3 tests/manual-pdf-web.py
+          if [ '${{ matrix.php }}' = '8.3' ] && [ "$SWIMLOG_RUN_BROWSER" = 'true' ]; then
+            wp eval-file "$GITHUB_WORKSPACE/tests/web-fixture.php" --path=/tmp/swimlog-wp
+            SWIMLOG_BROWSER=chromium timeout --signal=TERM --kill-after=15s 180s node tests/settings-browser.cjs
+          fi

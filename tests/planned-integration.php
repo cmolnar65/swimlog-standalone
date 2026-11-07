@@ -1,0 +1,42 @@
+<?php
+if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable test flag required.');
+require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/PlannedDetails.php';
+use SwimlogStandalone\PlannedDetails as PD;
+$f=json_decode(file_get_contents(getenv('SWIMLOG_WEB_FIXTURE')),true);$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];
+$owner=(int)wp_validate_auth_cookie($f['cookie'],'logged_in');wp_set_current_user($owner);$ids=$f['plans'];
+$GLOBALS['planned_checks']=0;
+function planned_check($value){++$GLOBALS['planned_checks'];if(!$value)throw new RuntimeException('Planned assertion '.$GLOBALS['planned_checks'].' failed.');}
+$before=serialize(\SwimLogEvaluation\Planned_Workout::get_for_user($ids['plan'],$owner));
+$d=PD::load($owner,$ids['plan']);planned_check(!is_wp_error($d));
+planned_check($d['summary']['Planned distance']==='1,000 m'&&$d['summary']['Planned duration']==='30:00.00');
+planned_check($d['summary']['Pool course']==='Yards'&&$d['summary']['Start time']==='07:30:00');
+planned_check($d['summary']['Primary stroke']==='Breaststroke'&&$d['summary']['Status']==='Planned');
+planned_check(strpos($d['instructions'],'Rest between sets')!==false);
+planned_check($d['structure']['title']==='Synthetic yard prescription'&&strpos($d['structure']['text'],'Total: 100 yd')!==false);
+$post=get_post($ids['structure']);$originalContent=$post->post_content;
+wp_update_post(array('ID'=>$post->ID,'post_content'=>'not-json'));
+$corrupt=PD::load($owner,$ids['plan']);
+planned_check($corrupt['structure']===null&&strpos($corrupt['structure_message'],'unavailable')!==false&&$corrupt['instructions']===$d['instructions']);
+wp_update_post(wp_slash(array('ID'=>$post->ID,'post_content'=>$originalContent)));
+$html=PD::render($d);planned_check(strpos($html,'PRIVATE_PLAN_NOTES_CANARY')===false);
+planned_check(strpos($html,'No recorded workout is matched')!==false);
+$matched=PD::load($owner,$ids['matched']);planned_check($matched['summary']['Status']==='Completed'&&$matched['match']['id']===$f['workouts']['pool']);
+$html=PD::render($matched,'/?date=2028-02-15&view=week');planned_check(strpos(html_entity_decode($html),'date=2028-02-15&view=week&workout=')!==false);
+$empty=PD::load($owner,$ids['empty']);$html=PD::render($empty);
+planned_check(strpos($html,'No instructions have been added.')!==false&&strpos($html,'No structured workout is linked.')!==false);
+$broken=PD::load($owner,$ids['broken']);$html=PD::render($broken);
+planned_check($broken['match']===null&&$broken['match_missing']&&$broken['structure']===null);
+planned_check(strpos($html,'FOREIGN_STRUCTURE_CANARY')===false&&strpos($html,'linked recorded workout is unavailable')!==false);
+$foreign=PD::load($owner,$ids['foreign']);$missing=PD::load($owner,99999999);
+planned_check(is_wp_error($foreign)&&$foreign->get_error_message()===$missing->get_error_message()&&$foreign->get_error_data()['status']===404);
+foreach(array(null,array('bad'),0,-1,'1 OR 1=1')as$id)planned_check(is_wp_error(PD::load($owner,$id)));
+// Escaping of legacy stored content, including instructions and exported prescription text.
+$d['title']='<script>synthetic</script>';$d['instructions']='<img src=x onerror=alert(1)>';$d['structure']['text']='<script>synthetic</script>';
+$html=PD::render($d);planned_check(strpos($html,'<script>')===false&&strpos($html,'<img')===false&&strpos($html,'&lt;script&gt;')!==false);
+$user=get_user_by('id',$owner);$user->add_cap('swimlog_manage_all_users');planned_check(is_wp_error(PD::load($owner,$ids['foreign'])));$user->remove_cap('swimlog_manage_all_users');
+$user->add_cap('swimlog_manage_own_workouts',false);wp_set_current_user(0);wp_set_current_user($owner);$denied=PD::load($owner,$ids['plan']);
+planned_check($denied['structure']===null&&strpos(PD::render($denied),'Synthetic yard prescription')===false);
+$user->add_cap('swimlog_manage_own_workouts');wp_set_current_user(0);wp_set_current_user($owner);
+planned_check(serialize(\SwimLogEvaluation\Planned_Workout::get_for_user($ids['plan'],$owner))===$before);
+$schema=get_option('swimlog_db_version');update_option('swimlog_db_version','0');planned_check(is_wp_error(PD::load($owner,$ids['plan'])));update_option('swimlog_db_version',$schema);
+echo 'Planned integration passed: '.$GLOBALS['planned_checks']." assertions.\n";

@@ -1,0 +1,1 @@
+<form method="post" action="/?action=garmin_write" class="settings-form"><input type="hidden" name="operation" value="<?php echo esc_attr($operation); ?>"><input type="hidden" name="nonce" value="<?php echo esc_attr(wp_create_nonce('standalone_'.$operation)); ?>">

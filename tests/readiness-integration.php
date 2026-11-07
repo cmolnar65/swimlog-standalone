@@ -1,0 +1,24 @@
+<?php
+if(getenv('SWIMLOG_SYNTHETIC_TEST')!=='1')throw new RuntimeException('Disposable synthetic environment required.');
+require_once dirname(__DIR__).'/app/Auth.php';require_once dirname(__DIR__).'/app/SwimEvaluation.php';
+use SwimlogStandalone\SwimEvaluation as E;use SwimLogEvaluation\Race_Readiness as R;use SwimLogEvaluation\Event;
+$f=json_decode(file_get_contents('/tmp/swimlog-readiness.json'),true);$owner=(int)$f['owner'];wp_set_current_user($owner);$_COOKIE[LOGGED_IN_COOKIE]=$f['cookie'];$checks=0;
+$check=static function($v)use(&$checks){++$checks;if(!$v)throw new RuntimeException('Readiness assertion '.$checks.' failed.');};
+$model=E::load($owner,array());$check(!is_wp_error($model));$d=$model['ready'];$expected=R::for_event($owner,Event::get_for_user($f['ids']['events'][0],$owner),42);$evidence=$d;unset($expected['seconds_until_event'],$evidence['seconds_until_event']);$check($evidence===$expected); // Countdown legitimately changes between calls.
+$check($d['workout_count']===2&&$d['length_count']===2&&$d['distance_native']==200&&$d['active_time_ms']===140000);
+$check($d['lifetime_pb_duration_ms']===60000&&$d['recent_best_duration_ms']===65000&&$d['recent_performance_count']===2);
+$check($d['recent_change_ms']===5000&&$d['recent_best_vs_pb_ms']===5000&&$d['recent_average_pace_100_ms']===67500);
+$check($d['event_distance_or_longer']&&count($model['evidence'])===3);$check($model['pages']===2&&$model['total']===22&&count($model['events'])===20);
+$second=E::load($owner,array('evaluation_page'=>'2'));$check(count($second['events'])===2&&$second['event']['id']===$f['ids']['events'][20]);
+$check(count(E::load($owner,array('event_id'=>(string)$f['ids']['events'][21]))['events'])===21);
+$check(E::load($owner,array('lookback_days'=>'1'))['ready']['recent_performance_count']===0);$check(E::load($owner,array('lookback_days'=>'365'))['ready']['recent_performance_count']===3);
+foreach(array('0','366','01','1.5',array('42'))as$bad)$check(is_wp_error(E::load($owner,array('lookback_days'=>$bad))));
+foreach(array('0','-1','01',array('1'))as$bad)$check(is_wp_error(E::load($owner,array('evaluation_page'=>$bad))));
+foreach(array('0','-1','1.2',array('1'))as$bad)$check(is_wp_error(E::load($owner,array('event_id'=>$bad))));
+foreach(array($f['ids']['past'],999999999)as$id)$check(E::load($owner,array('event_id'=>(string)$id))->get_error_data()['status']===404);
+$check(is_wp_error(E::load(0,array()))&&is_wp_error(E::load($owner+1,array())));
+$before=get_user_meta($owner);$event=Event::get_for_user($f['ids']['events'][0],$owner);$event->course_unit='yd';$check(R::for_event($owner,$event)['recent_best_duration_ms']===80000);$event->course_unit='m';$event->stroke='BR';$check(R::for_event($owner,$event)['recent_best_duration_ms']===90000);$event->stroke='FLY';$check(R::for_event($owner,$event)['recent_performance_count']===0);$check(get_user_meta($owner)===$before);
+$user=get_user_by('id',$owner);$user->add_cap('swimlog_manage_own_workouts',false);wp_set_current_user(0);wp_set_current_user($owner);$check(E::load($owner,array())->get_error_data()['status']===403);$user->add_cap('swimlog_manage_own_workouts');wp_set_current_user(0);wp_set_current_user($owner);
+$version=get_option('swimlog_db_version');update_option('swimlog_db_version','0');$check(E::load($owner,array())->get_error_data()['status']===503);update_option('swimlog_db_version',$version);
+wp_set_current_user((int)wp_validate_auth_cookie($f['manager'],'logged_in'));$_COOKIE[LOGGED_IN_COOKIE]=$f['manager'];$check(E::load(get_current_user_id(),array('event_id'=>(string)$f['ids']['events'][0]))->get_error_data()['status']===404);$check(E::load(get_current_user_id(),array('user_id'=>(string)$owner))['event']===null);
+echo 'Swim Evaluation integration: '.$checks." assertions passed.\n";

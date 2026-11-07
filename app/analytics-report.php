@@ -1,0 +1,13 @@
+<?php use SwimlogStandalone\AnalyticsReports as AR;use SwimLogEvaluation\Workout; ?>
+<section class="calendar-panel workout-page" aria-labelledby="analytics-title"><h2 id="analytics-title"><?php echo $screen==='trends'?'Training Trends':'Pool Analytics'; ?></h2>
+<?php if(is_wp_error($analyticsReport)): ?><p role="alert"><?php echo esc_html($analyticsReport->get_error_message()); ?></p><?php else:
+$r=$analyticsReport;$months=$r['months'];$course=$r['course'];$stroke=$r['stroke'];$additional=$r['additional'];$strokes=$r['strokes'];$data=$r['data'];$groups=$screen==='pool'?$data['groups']:array();
+$change=static function($value){return null===$value?'New activity':sprintf('%+.1f%%',$value);}; ?>
+<p><?php echo $screen==='trends'?'Swimming only: pool and open-water distance, sessions and active time. Running, walking and measurements are excluded. These are recorded-volume comparisons, not estimates of fitness, recovery or injury risk.':'Recorded active pool lengths only. Meter and yard courses, pool lengths and strokes stay separate. Missing timing and stroke counts are not estimated.'; ?></p>
+<form method="get" class="log-filters"><input type="hidden" name="screen" value="<?php echo esc_attr($screen); ?>">
+<div><label for="analytics-months">Period (months)</label><input id="analytics-months" name="months" type="number" min="1" max="24" required value="<?php echo esc_attr($months); ?>"></div>
+<?php if($screen==='pool'): ?><div><label for="analytics-course">Course</label><select id="analytics-course" name="course"><?php foreach(array('m'=>'Meters','yd'=>'Yards')as$key=>$label): ?><option value="<?php echo esc_attr($key); ?>" <?php selected($course,$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></div>
+<div><label for="analytics-stroke">Stroke</label><select id="analytics-stroke" name="stroke"><option value="">All strokes</option><?php foreach($strokes as$key=>$label): ?><option value="<?php echo esc_attr($key); ?>" <?php selected($stroke,$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></div>
+<label><input type="checkbox" name="additional_metrics" value="1" <?php checked($additional); ?>> Show additional metrics</label><?php endif; ?><button>Apply filters</button></form>
+<?php require __DIR__.'/report-links.php'; ?>
+<?php if($screen==='trends'):echo AR::chart($data['weekly']); ?><p class="detail-caption">Bars show recorded weeks only; unrecorded weeks are not filled or estimated. Exact values and rolling averages appear below.</p><?php require __DIR__.'/training-trends-content.php';else:require __DIR__.'/pool-analytics-content.php';endif;endif; ?></section>

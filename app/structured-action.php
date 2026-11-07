@@ -1,0 +1,3 @@
+<form method="post" action="/?action=structured_write" class="structure-action">
+<?php foreach(array('structure_id'=>$id,'operation'=>$op,'nonce'=>wp_create_nonce('standalone_structure_'.$op.'_'.$id),'revision'=>$d['revision'])as$key=>$value): ?><input type="hidden" name="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($value); ?>"><?php endforeach; ?>
+<?php if($op==='delete'): ?><p>Deletion is permanent. Referenced workouts must be hidden instead.</p><label><input type="checkbox" name="confirm_delete" value="1" required> Confirm permanent deletion</label><?php endif; ?><button><?php echo esc_html($label); ?></button></form>
